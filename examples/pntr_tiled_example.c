@@ -22,7 +22,7 @@ bool Update(pntr_app* app, pntr_image* screen) {
     AppData* appData = (AppData*)pntr_app_userdata(app);
 
     pntr_clear_background(screen, PNTR_BLACK);
-    pntr_draw_tiled(screen, appData->map, 0, 0);
+    pntr_draw_tiled(screen, appData->map, 0, 0, PNTR_WHITE);
 
     return true;
 }

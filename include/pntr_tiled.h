@@ -49,7 +49,7 @@ extern "C" {
 
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled(const char* fileName);
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_memory(const unsigned char *fileData, unsigned int dataSize, const char* baseDir);
-PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int x, int y);
+PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int posX, int posY, pntr_color tint);
 PNTR_TILED_API void pntr_unload_tiled(cute_tiled_map_t* map);
 
 #ifdef __cplusplus
@@ -58,9 +58,22 @@ PNTR_TILED_API void pntr_unload_tiled(cute_tiled_map_t* map);
 
 #endif  // PNTR_TILED_H_
 
+// TODO: Remove stdio.h
+#include <stdio.h> // printf
+
 #ifdef PNTR_TILED_IMPLEMENTATION
 #ifndef PNTR_TILED_IMPLEMENTATION_ONCE
 #define PNTR_TILED_IMPLEMENTATION_ONCE
+
+#ifndef PNTR_STRRCHR
+    #include <string.h>
+    #define PNTR_STRRCHR strrchr
+#endif
+
+#ifndef PNTR_STRCMP
+    #include <string.h>
+    #define PNTR_STRCMP strcmp
+#endif
 
 // cute_tiled
 #define CUTE_TILED_IMPLEMENTATION
@@ -80,11 +93,6 @@ PNTR_TILED_API void pntr_unload_tiled(cute_tiled_map_t* map);
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-#ifndef PNTR_STRRCHR
-    #include <string.h>
-    #define PNTR_STRRCHR strrchr
 #endif
 
 char *_pntr_tiled_find_last_slash(const char *str) {
@@ -131,7 +139,6 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled(const char* fileName) {
     return output;
 }
 
-#include <stdio.h>
 
 void _pntr_load_tiled_string_texture(cute_tiled_string_t* image, const char* baseDir) {
     char fullPath[255];
@@ -177,8 +184,128 @@ PNTR_TILED_API void pntr_unload_tiled(cute_tiled_map_t* map) {
     cute_tiled_free_map(map);
 }
 
-PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int x, int y) {
-    // TODO: Unload all associated images.
+void pntr_draw_map_layer_tiles(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
+    unsigned int gid;
+            printf("Layer! \n");
+    cute_tiled_tileset_t* tilesets = map->tilesets;
+
+	for (int y = 0; y < layer->height; y++) {
+		for (int x = 0; x < layer->width; x++) {
+            gid = layer->data[(y * layer->width) + x];
+            cute_tiled_tileset_t* activeTileset = NULL;
+            cute_tiled_tile_descriptor_t* tile = NULL;
+            cute_tiled_tileset_t* tileset = map->tilesets;
+            int tileID = -1;
+
+
+            while (tileset) {
+
+
+
+                cute_tiled_tile_descriptor_t* tileCounter = tileset->tiles;
+                while (tileCounter) {
+                    //printf("Index: %d %d\n", gid, tileCounter->tile_index);
+                    //return;
+                    if (gid == tileCounter->tile_index + tileset->firstgid) {
+                        tile = tileCounter;
+                        activeTileset = tileset;
+                        break;
+                    }
+                    tileCounter = tileCounter->next;
+                }
+
+                if (tile != NULL ) {
+                    break;
+                }
+
+
+                
+                // if (tileset->firstgid >= gid && gid < tileset->firstgid + tileset->tilecount) {
+
+                //     tile = tileset->tiles + gid - tileset->firstgid - 1;
+                //     activeTileset = tileset;
+                //     break;
+                // }
+
+                tileset = tileset->next;
+            }
+
+            if (activeTileset != NULL) {
+                //printf("found!\n");
+
+                int tileX = tile->tile_index % activeTileset->columns;
+                int tileY = tile->tile_index / activeTileset->columns;
+
+                pntr_rectangle rec = {
+                    .x = tileX * activeTileset->tilewidth + tileX * activeTileset->spacing + activeTileset->margin,
+                    .y = tileY * activeTileset->tileheight  + tileY * activeTileset->spacing + activeTileset->margin,
+                    .width = map->tilewidth,
+                    .height = map->tileheight
+                };
+
+                printf("src: %d %d %dx%d %dx%d - %dx%d\n", gid, tile->tile_index, rec.x, rec.y, rec.width, rec.height, tileX, tileY);
+                pntr_draw_image_rec(dst, (pntr_image*)activeTileset->image.ptr, rec, posX + x * activeTileset->tilewidth, posY + y * activeTileset->tileheight);
+                pntr_draw_rectangle(dst,  posX + x * activeTileset->tilewidth,  posY + y * activeTileset->tileheight, activeTileset->tilewidth, activeTileset->tileheight, 1, PNTR_RED);
+            }
+
+            //printf("%d, ", gid);
+        }
+        //printf("\n");
+    }
+    /*
+	unsigned long i, j;
+	unsigned int gid, x, y, w, h, flags;
+	float opacity;
+	cute_tiled_tileset_t *ts;
+	cute_tiled_string_t *im;
+	void* image;
+	opacity = layer->opacity;
+	for (i = 0; i < layer->height; i++) {
+		for (j = 0; j < layer->width; j++) {
+			gid = layer->data[(i * layer->width) + j];
+
+            cute_tiled_tile_descriptor_t* tile = GetTileFromGid(map, gid);
+
+            if (tile != NULL) {
+                ts = GetTilesetFromHash(map->tilesets, tile->image.hash_id);
+                if (ts != NULL) {
+                    x = ts->margin + (j * ts->tilewidth)  + (j * ts->spacing);
+                    y = ts->margin + (i * ts->tileheight)  + (i * ts->spacing);
+                    // x  = map->tiles[gid]->ul_x;
+                    // y  = map->tiles[gid]->ul_y;
+                    w  = ts->tilewidth;
+                    h  = ts->tileheight;
+                    // flags = (layer->content.gids[(i*map->width)+j]) & ~TMX_FLIP_BITS_REMOVAL;
+                    //DrawMapTile((Texture*)ts->image.ptr, x, y, w, h, j*ts->tilewidth + posX, i*ts->tileheight + posY, op,  tint);
+                }
+            }
+		}
+	}
+
+    */
+}
+
+void pntr_draw_map_layer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
+	while (layer) {
+		if (layer->visible == 1) {
+            if (PNTR_STRCMP(layer->type.ptr, "group") == 0) {
+                //DrawMapLayer(map, layer->layers, layer->offsetx + posX, layer->offsety + posY, tint);
+            } else if (PNTR_STRCMP(layer->type.ptr, "objectgroup") == 0) {
+                //DrawMapLayerObjects(layer->objects, layer->offsetx + posX, layer->offsety + posY, tint);
+            } else if (PNTR_STRCMP(layer->type.ptr, "imagelayer") == 0) {
+                //DrawMapLayerImage(layer->image, layer->offsetx + posX, layer->offsety + posY, tint);
+            } else if (PNTR_STRCMP(layer->type.ptr, "tilelayer") == 0) {
+                pntr_draw_map_layer_tiles(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tint);
+            }
+		}
+		layer = layer->next;
+	}
+}
+
+PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int posX, int posY, pntr_color tint) {
+    pntr_color background = pntr_get_color(map->backgroundcolor);
+    pntr_draw_rectangle_fill(dst, posX, posY, map->tilewidth * map->width, map->tileheight * map->height, background);
+    pntr_draw_map_layer(dst, map, map->layers, posX, posY, tint);
 }
 
 #ifdef __cplusplus

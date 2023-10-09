@@ -13,7 +13,7 @@ int main() {
     assert(map);
 
     pntr_image* image = pntr_gen_image_color(map->tilewidth * map->width, map->tileheight * map->height, PNTR_BLACK);
-    pntr_draw_tiled(image, map, 0, 0);
+    pntr_draw_tiled(image, map, 0, 0, PNTR_WHITE);
     pntr_save_image(image, "output.png");
 
     pntr_unload_tiled(map);
