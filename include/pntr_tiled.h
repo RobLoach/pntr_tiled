@@ -185,56 +185,28 @@ PNTR_TILED_API void pntr_unload_tiled(cute_tiled_map_t* map) {
 }
 
 void pntr_draw_map_layer_tiles(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
-    unsigned int gid;
-            printf("Layer! \n");
+    int gid;
     cute_tiled_tileset_t* tilesets = map->tilesets;
 
 	for (int y = 0; y < layer->height; y++) {
 		for (int x = 0; x < layer->width; x++) {
             gid = layer->data[(y * layer->width) + x];
             cute_tiled_tileset_t* activeTileset = NULL;
-            cute_tiled_tile_descriptor_t* tile = NULL;
             cute_tiled_tileset_t* tileset = map->tilesets;
             int tileID = -1;
 
-
             while (tileset) {
-
-
-
-                cute_tiled_tile_descriptor_t* tileCounter = tileset->tiles;
-                while (tileCounter) {
-                    //printf("Index: %d %d\n", gid, tileCounter->tile_index);
-                    //return;
-                    if (gid == tileCounter->tile_index + tileset->firstgid) {
-                        tile = tileCounter;
-                        activeTileset = tileset;
-                        break;
-                    }
-                    tileCounter = tileCounter->next;
-                }
-
-                if (tile != NULL ) {
+                if (gid >= tileset->firstgid && gid < tileset->firstgid + tileset->tilecount) {
+                    tileID = gid - tileset->firstgid;
+                    activeTileset = tileset;
                     break;
                 }
-
-
-                
-                // if (tileset->firstgid >= gid && gid < tileset->firstgid + tileset->tilecount) {
-
-                //     tile = tileset->tiles + gid - tileset->firstgid - 1;
-                //     activeTileset = tileset;
-                //     break;
-                // }
-
                 tileset = tileset->next;
             }
 
             if (activeTileset != NULL) {
-                //printf("found!\n");
-
-                int tileX = tile->tile_index % activeTileset->columns;
-                int tileY = tile->tile_index / activeTileset->columns;
+                int tileX = tileID % activeTileset->columns;
+                int tileY = tileID / activeTileset->columns;
 
                 pntr_rectangle rec = {
                     .x = tileX * activeTileset->tilewidth + tileX * activeTileset->spacing + activeTileset->margin,
@@ -243,46 +215,14 @@ void pntr_draw_map_layer_tiles(pntr_image* dst, cute_tiled_map_t* map, cute_tile
                     .height = map->tileheight
                 };
 
-                printf("src: %d %d %dx%d %dx%d - %dx%d\n", gid, tile->tile_index, rec.x, rec.y, rec.width, rec.height, tileX, tileY);
+                //printf("src: %d %d %dx%d %dx%d - %dx%d\n", gid, tileID, rec.x, rec.y, rec.width, rec.height, tileX, tileY);
                 pntr_draw_image_rec(dst, (pntr_image*)activeTileset->image.ptr, rec, posX + x * activeTileset->tilewidth, posY + y * activeTileset->tileheight);
-                pntr_draw_rectangle(dst,  posX + x * activeTileset->tilewidth,  posY + y * activeTileset->tileheight, activeTileset->tilewidth, activeTileset->tileheight, 1, PNTR_RED);
             }
-
-            //printf("%d, ", gid);
+            else {
+                printf("not found: %d\n", gid);
+            }
         }
-        //printf("\n");
     }
-    /*
-	unsigned long i, j;
-	unsigned int gid, x, y, w, h, flags;
-	float opacity;
-	cute_tiled_tileset_t *ts;
-	cute_tiled_string_t *im;
-	void* image;
-	opacity = layer->opacity;
-	for (i = 0; i < layer->height; i++) {
-		for (j = 0; j < layer->width; j++) {
-			gid = layer->data[(i * layer->width) + j];
-
-            cute_tiled_tile_descriptor_t* tile = GetTileFromGid(map, gid);
-
-            if (tile != NULL) {
-                ts = GetTilesetFromHash(map->tilesets, tile->image.hash_id);
-                if (ts != NULL) {
-                    x = ts->margin + (j * ts->tilewidth)  + (j * ts->spacing);
-                    y = ts->margin + (i * ts->tileheight)  + (i * ts->spacing);
-                    // x  = map->tiles[gid]->ul_x;
-                    // y  = map->tiles[gid]->ul_y;
-                    w  = ts->tilewidth;
-                    h  = ts->tileheight;
-                    // flags = (layer->content.gids[(i*map->width)+j]) & ~TMX_FLIP_BITS_REMOVAL;
-                    //DrawMapTile((Texture*)ts->image.ptr, x, y, w, h, j*ts->tilewidth + posX, i*ts->tileheight + posY, op,  tint);
-                }
-            }
-		}
-	}
-
-    */
 }
 
 void pntr_draw_map_layer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {

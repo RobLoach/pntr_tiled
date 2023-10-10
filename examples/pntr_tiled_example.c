@@ -7,6 +7,8 @@
 typedef struct AppData {
     struct nk_context* ctx;
     cute_tiled_map_t* map;
+
+    int x, y;
 } AppData;
 
 bool Init(pntr_app* app) {
@@ -14,6 +16,8 @@ bool Init(pntr_app* app) {
     pntr_app_set_userdata(app, appData);
 
     appData->map = pntr_load_tiled("resources/desert.json");
+    appData->x = 0;
+    appData->y = 0;
 
     return true;
 }
@@ -21,8 +25,22 @@ bool Init(pntr_app* app) {
 bool Update(pntr_app* app, pntr_image* screen) {
     AppData* appData = (AppData*)pntr_app_userdata(app);
 
+
+    if (pntr_app_key_down(app, PNTR_APP_KEY_LEFT)) {
+        appData->x--;
+    }
+    if (pntr_app_key_down(app, PNTR_APP_KEY_RIGHT)) {
+        appData->x++;
+    }
+    if (pntr_app_key_down(app, PNTR_APP_KEY_UP)) {
+        appData->y--;
+    }
+    if (pntr_app_key_down(app, PNTR_APP_KEY_DOWN)) {
+        appData->y++;
+    }
+
     pntr_clear_background(screen, PNTR_BLACK);
-    pntr_draw_tiled(screen, appData->map, 0, 0, PNTR_WHITE);
+    pntr_draw_tiled(screen, appData->map, appData->x, appData->y, PNTR_WHITE);
 
     return true;
 }
