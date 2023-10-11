@@ -4,7 +4,10 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/../cmake)
 find_package(pntr)
 
 # Resources
-# file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/resources/ DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/resources/)
+file(GLOB resources resources/*)
+set(test_resources)
+list(APPEND test_resources ${resources})
+file(COPY ${test_resources} DESTINATION "resources/")
 
 # pntr_tiled_test
 add_executable(pntr_tiled_test pntr_tiled_test.c)

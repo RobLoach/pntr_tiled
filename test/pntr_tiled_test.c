@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <assert.h>
 
 #define PNTR_IMPLEMENTATION
@@ -8,15 +7,15 @@
 #include "pntr_tiled.h"
 
 int main() {
-
     cute_tiled_map_t* map = pntr_load_tiled("resources/desert.json");
-    assert(map);
+    assert(map != NULL);
 
-    pntr_image* image = pntr_gen_image_color(map->tilewidth * map->width, map->tileheight * map->height, PNTR_BLACK);
-    pntr_draw_tiled(image, map, 0, 0, PNTR_WHITE);
-    pntr_save_image(image, "output.png");
+    pntr_image* image = pntr_gen_image_tiled(map, PNTR_WHITE);
+    assert(image != NULL);
+    assert(pntr_save_image(image, "output.png"));
 
     pntr_unload_tiled(map);
+    pntr_unload_image(image);
 
     return 0;
 }
