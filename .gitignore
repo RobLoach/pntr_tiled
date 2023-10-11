@@ -1,3 +1,4 @@
 .vscode
 build
 *.tiled-session
+*.tiled-session-lock
