@@ -240,7 +240,7 @@ PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map
     }
 
 	while (layer) {
-		if (layer->visible == 1) {
+		if (layer->opacity >= 0) {
             // TODO: Move to a switch statement on the first character instead.
             if (PNTR_STRCMP(layer->type.ptr, "tilelayer") == 0) {
                 pntr_draw_tiled_layer_tiles(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tint);
