@@ -54,6 +54,10 @@ PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int 
 PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_color tint);
 
+#ifdef PNTR_ASSETSYS_API
+PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
+#endif  // PNTR_ASSETSYS_API
+
 #ifdef __cplusplus
 }
 #endif
@@ -136,7 +140,7 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled(const char* fileName) {
     size_t length = 0;
     while (fileName[length++] != '\0');
     char* baseDir = pntr_load_memory(length + 1);
-    pntr_memory_copy((void*)baseDir, (void*)fileName, length + 1);
+    pntr_memory_copy((void*)baseDir, (void*)fileName, length);
     _pntr_tiled_path_basedir(baseDir);
 
     // Load the tiled map.
@@ -146,7 +150,6 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled(const char* fileName) {
     return output;
 }
 
-
 void _pntr_load_tiled_string_texture(cute_tiled_string_t* image, const char* baseDir) {
     // TODO: Allow loading images from a base64 embedded image.
     char fullPath[255];
@@ -155,7 +158,7 @@ void _pntr_load_tiled_string_texture(cute_tiled_string_t* image, const char* bas
     PNTR_STRCAT(fullPath, image->ptr);
 
     pntr_image* loadedImage = pntr_load_image(fullPath);
-    if (image == NULL) {
+    if (loadedImage == NULL) {
         printf("pntr_tiled: Failed to load image: %s", fullPath);
     }
     image->ptr = (void*)loadedImage;
@@ -280,6 +283,57 @@ PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int 
     pntr_draw_rectangle_fill(dst, posX, posY, map->tilewidth * map->width, map->tileheight * map->height, background);
     pntr_draw_tiled_layer(dst, map, map->layers, posX, posY, tint);
 }
+
+// pntr_assetsys integration
+#ifdef PNTR_ASSETSYS_API
+/**
+ * Load the given cute_tiled_string_t image as a pntr_image.
+ */
+void _pntr_load_tiled_assetsys_string_texture(assetsys_t* sys, cute_tiled_string_t* image, const char* baseDir) {
+    char fullPath[255];
+    fullPath[0] = '\0';
+    PNTR_STRCAT(fullPath, baseDir);
+    PNTR_STRCAT(fullPath, image->ptr);
+
+    pntr_image* loadedImage = pntr_load_image_from_assetsys(sys, fullPath);
+    if (loadedImage == NULL) {
+        printf("pntr_tiled: Failed to load image: %s", fullPath);
+    }
+    image->ptr = (void*)loadedImage;
+}
+
+PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName) {
+    unsigned int size;
+    unsigned char* data = pntr_load_file_from_assetsys(sys, fileName, &size);
+    if (data == NULL) {
+        return NULL;
+    }
+
+    cute_tiled_map_t* map = cute_tiled_load_map_from_memory(data, (int)size, 0);
+    if (map == NULL) {
+        pntr_unload_memory(data);
+        return NULL;
+    }
+
+    // Create the baseDir
+    size_t length = 0;
+    while (fileName[length++] != '\0');
+    char* baseDir = pntr_load_memory(length);
+    pntr_memory_copy((void*)baseDir, (void*)fileName, length);
+    _pntr_tiled_path_basedir(baseDir);
+
+    cute_tiled_tileset_t* tileset = map->tilesets;
+    while (tileset) {
+        _pntr_load_tiled_assetsys_string_texture(sys, &tileset->image, baseDir);
+        tileset = tileset->next;
+    }
+
+    pntr_unload_memory(data);
+    pntr_unload_memory(baseDir);
+
+    return map;
+}
+#endif  // PNTR_ASSETSYS_API
 
 #ifdef __cplusplus
 }
