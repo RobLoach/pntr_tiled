@@ -240,19 +240,22 @@ PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map
     }
 
 	while (layer) {
-		if (layer->visible == 1) {
-            // TODO: Move to a switch statement on the first character instead.
-            if (PNTR_STRCMP(layer->type.ptr, "tilelayer") == 0) {
-                pntr_draw_tiled_layer_tiles(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tint);
-            }
-            else if (PNTR_STRCMP(layer->type.ptr, "group") == 0) {
-                pntr_draw_tiled_layer(dst, map, layer->layers, layer->offsetx + posX, layer->offsety + posY, tint);
-            } else if (PNTR_STRCMP(layer->type.ptr, "objectgroup") == 0) {
-                // TODO: Draw the objects?
-                //DrawMapLayerObjects(layer->objects, layer->offsetx + posX, layer->offsety + posY, tint);
-            } else if (PNTR_STRCMP(layer->type.ptr, "imagelayer") == 0) {
-                // TODO: Draw the image layers
-                //DrawMapLayerImage(layer->image, layer->offsetx + posX, layer->offsety + posY, tint);
+		if (layer->opacity > 0.0f && layer->type.ptr != NULL) {
+            switch (layer->type.ptr[0]) {
+                case 't': // "tilelayer"
+                    pntr_draw_tiled_layer_tiles(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tint);
+                break;
+                case 'g': // "group"
+                    pntr_draw_tiled_layer(dst, map, layer->layers, layer->offsetx + posX, layer->offsety + posY, tint);
+                break;
+                case 'o': // "objectgroup"
+                    // TODO: Draw the objects?
+                    //DrawMapLayerObjects(layer->objects, layer->offsetx + posX, layer->offsety + posY, tint);
+                break;
+                case 'i': // "imagelayer"
+                    // TODO: Draw the image layers
+                    //DrawMapLayerImage(layer->image, layer->offsetx + posX, layer->offsety + posY, tint);
+                break;
             }
 		}
 

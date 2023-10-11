@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="git" orientation="orthogonal" renderorder="right-down" width="40" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="2" nextobjectid="1">
  <editorsettings>
-  <export target="desert.json" format="json"/>
+  <export target="resources/desert.json" format="json"/>
  </editorsettings>
  <tileset firstgid="1" name="Desert" tilewidth="32" tileheight="32" spacing="1" margin="1" tilecount="48" columns="8">
-  <image source="tmw_desert_spacing.png" width="265" height="199"/>
+  <image source="resources/desert.png" width="265" height="199"/>
   <tile id="0">
    <objectgroup draworder="index" id="2">
     <object id="1" x="16" y="16" width="16" height="15"/>
