@@ -53,6 +53,7 @@ PNTR_TILED_API void pntr_unload_tiled(cute_tiled_map_t* map);
 PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int posX, int posY, pntr_color tint);
 PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_color tint);
+PNTR_TILED_API pntr_image* pntr_get_tiled_tile(cute_tiled_map_t* map, int gid);
 
 #ifdef PNTR_ASSETSYS_API
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
@@ -86,6 +87,48 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, 
     #define PNTR_STRCAT strcat
 #endif
 
+#ifndef PNTR_STRLEN
+    #include <string.h>
+    #define PNTR_STRLEN strlen
+#endif
+
+#ifndef PNTR_PATH_MAX
+    #ifdef PATH_MAX
+        #define PNTR_PATH_MAX PATH_MAX
+    #else
+        #define PNTR_PATH_MAX 1024
+    #endif
+#endif
+
+#ifndef STRPOOL_EMBEDDED_ASSERT
+    #ifdef PNTR_ASSERT
+        #define STRPOOL_EMBEDDED_ASSERT PNTR_ASSERT
+    #endif
+#endif
+
+#ifndef STRPOOL_EMBEDDED_MEMSET
+    #define STRPOOL_EMBEDDED_MEMSET( ptr, val, cnt ) ( PNTR_MEMSET( ptr, val, cnt ) )
+#endif
+
+#ifndef STRPOOL_EMBEDDED_MEMCPY
+    #define STRPOOL_EMBEDDED_MEMCPY( dst, src, cnt ) ( PNTR_MEMCPY( dst, src, cnt ) )
+#endif
+
+#ifndef STRPOOL_EMBEDDED_MEMCMP
+    //#include <string.h>
+    //#define STRPOOL_EMBEDDED_MEMCMP( pr1, pr2, cnt ) ( memcmp( pr1, pr2, cnt ) )
+#endif
+
+#ifndef STRPOOL_EMBEDDED_STRNICMP
+    // #ifdef _WIN32
+    //     #include <string.h>
+    //     #define STRPOOL_EMBEDDED_STRNICMP( s1, s2, len ) ( _strnicmp( s1, s2, len ) )
+    // #else
+    //     #include <string.h>
+    //     #define STRPOOL_EMBEDDED_STRNICMP( s1, s2, len ) ( strncasecmp( s1, s2, len ) )
+    // #endif
+#endif
+
 // cute_tiled
 #define CUTE_TILED_IMPLEMENTATION
 #define CUTE_TILED_ALLOC(size, ctx) pntr_load_memory(size)
@@ -106,6 +149,12 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, 
 extern "C" {
 #endif
 
+/**
+ * Finds the last slash in the given path.
+ *
+ * @internal
+ * @private
+ */
 char *_pntr_tiled_find_last_slash(const char *str) {
    const char *slash     = PNTR_STRRCHR(str, '/');
    const char *backslash = PNTR_STRRCHR(str, '\\');
@@ -116,6 +165,12 @@ char *_pntr_tiled_find_last_slash(const char *str) {
       return (char*)slash;
 }
 
+/**
+ * Retrieves the base path of the given path.
+ *
+ * @internal
+ * @private
+ */
 void _pntr_tiled_path_basedir(char *path) {
    char *last = NULL;
    if (!path || path[0] == '\0' || path[1] == '\0')
@@ -129,6 +184,70 @@ void _pntr_tiled_path_basedir(char *path) {
    }
 }
 
+/**
+ * Prepare the internal tiles.
+ *
+ * @internal
+ * @private
+ */
+void _pntr_load_tiled_tiles(cute_tiled_map_t* map) {
+    if (map == NULL) {
+        return;
+    }
+
+    // Count how many tiles there are
+    int tileCount = 0;
+    cute_tiled_tileset_t* tileset = map->tilesets;
+    while (tileset) {
+        tileCount += tileset->tilecount;
+        tileset = tileset->next;
+    }
+
+    // Prepare the entire tiles set
+    pntr_image* tiles = pntr_load_memory(sizeof(pntr_image) * (size_t)tileCount);
+
+    // Build all the tiles from each tileset.
+    tileset = map->tilesets;
+    while (tileset) {
+        for (int i = 0; i < tileset->tilecount; i++) {
+            // Calculate the gid.
+            int gid = tileset->firstgid + i - 1;
+
+            // Figure out where the tile appears in the tileset.
+            int tileX = i % tileset->columns;
+            int tileY = i / tileset->columns;
+
+            // Build the source rectangle.
+            pntr_rectangle srcRect = {
+                .x = tileX * tileset->tilewidth + tileX * tileset->spacing + tileset->margin,
+                .y = tileY * tileset->tileheight  + tileY * tileset->spacing + tileset->margin,
+                .width = tileset->tilewidth,
+                .height = tileset->tileheight
+            };
+
+            // Build the subimage as part of the tiles array.
+            pntr_image* temporaryTile = pntr_image_subimage((pntr_image*)tileset->image.ptr, srcRect.x, srcRect.y, srcRect.width, srcRect.height);
+            pntr_memory_copy((void*)(tiles + gid), (void*)temporaryTile, sizeof(pntr_image));
+
+            // Don't need the temporary tile anymore.
+            pntr_unload_image(temporaryTile);
+        }
+        tileset = tileset->next;
+    }
+
+    map->tiledversion.ptr = (const char*)tiles;
+}
+
+PNTR_TILED_API pntr_image* pntr_get_tiled_tile(cute_tiled_map_t* map, int gid) {
+    if (gid <= 0) {
+        return NULL;
+    }
+
+    // Reference the internal gid'ed tiles.
+    pntr_image* tiles = (pntr_image*)map->tiledversion.ptr;
+    return tiles + gid - 1;
+}
+
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled(const char* fileName) {
     unsigned int bytesRead;
     unsigned char* data = pntr_load_file(fileName, &bytesRead);
@@ -137,31 +256,31 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled(const char* fileName) {
     }
 
     // Copy the fileName, along with its null terminator to find the basePath.
-    size_t length = 0;
-    while (fileName[length++] != '\0');
-    char* baseDir = pntr_load_memory(length + 1);
-    pntr_memory_copy((void*)baseDir, (void*)fileName, length);
+    char baseDir[PNTR_PATH_MAX];
+    pntr_memory_copy((void*)baseDir, (void*)fileName, (size_t)PNTR_STRLEN(fileName));
     _pntr_tiled_path_basedir(baseDir);
 
     // Load the tiled map.
     cute_tiled_map_t* output = pntr_load_tiled_from_memory(data, bytesRead, baseDir);
     pntr_unload_memory(data);
-    pntr_unload_memory(baseDir);
+
     return output;
 }
 
 void _pntr_load_tiled_string_texture(cute_tiled_string_t* image, const char* baseDir) {
     // TODO: Allow loading images from a base64 embedded image.
-    char fullPath[255];
+
+    // Concatenate the baseDir with the image path.
+    char fullPath[PNTR_PATH_MAX];
     fullPath[0] = '\0';
     PNTR_STRCAT(fullPath, baseDir);
     PNTR_STRCAT(fullPath, image->ptr);
 
-    pntr_image* loadedImage = pntr_load_image(fullPath);
-    if (loadedImage == NULL) {
+    // Replace the image string with a pointer to the new image.
+    image->ptr = (const char*)pntr_load_image(fullPath);
+    if (image->ptr == NULL) {
         printf("pntr_tiled: Failed to load image: %s", fullPath);
     }
-    image->ptr = (void*)loadedImage;
 }
 
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_memory(const unsigned char *fileData, unsigned int dataSize, const char* baseDir) {
@@ -176,6 +295,9 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_memory(const unsigned char
         tileset = tileset->next;
     }
 
+    // Load the individual tiles.
+    _pntr_load_tiled_tiles(map);
+
     return map;
 }
 
@@ -183,6 +305,9 @@ PNTR_TILED_API void pntr_unload_tiled(cute_tiled_map_t* map) {
     if (map == NULL) {
         return;
     }
+
+    // Unload the internal tiles.
+    pntr_unload_memory((void*)map->tiledversion.ptr);
 
     // Unload all images.
     cute_tiled_tileset_t* tileset = map->tilesets;
@@ -196,36 +321,30 @@ PNTR_TILED_API void pntr_unload_tiled(cute_tiled_map_t* map) {
 }
 
 void pntr_draw_tiled_layer_tiles(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
-    int gid;
+    pntr_image* tile;
+    int tileID, row, gid, hflip, vflip, dflip;
 
 	for (int y = 0; y < layer->height; y++) {
+        row = y * layer->width;
 		for (int x = 0; x < layer->width; x++) {
-            gid = layer->data[(y * layer->width) + x];
-            cute_tiled_tileset_t* activeTileset = NULL;
-            cute_tiled_tileset_t* tileset = map->tilesets;
-            int tileID = -1;
+            // Get the flip flags for the tile, along with its cleaned gid.
+            gid = layer->data[row + x];
 
-            while (tileset) {
-                if (gid >= tileset->firstgid && gid < tileset->firstgid + tileset->tilecount) {
-                    tileID = gid - tileset->firstgid;
-                    activeTileset = tileset;
-                    break;
+            // Get the clean Tile ID
+            tileID = cute_tiled_unset_flags(gid);
+
+            // Get the tile from the gid.
+            tile = pntr_get_tiled_tile(map, tileID);
+
+            if (tile != NULL) {
+                // See if there are flip flags applied.
+                if (tileID != gid) {
+                    cute_tiled_get_flags(gid, &hflip, &vflip, &dflip);
+                    pntr_draw_image_flipped(dst, tile, posX + x * tile->width, posY + y * tile->height, (bool)hflip, (bool)vflip, (bool)dflip);
                 }
-                tileset = tileset->next;
-            }
-
-            if (activeTileset != NULL) {
-                int tileX = tileID % activeTileset->columns;
-                int tileY = tileID / activeTileset->columns;
-
-                pntr_rectangle srcRect = {
-                    .x = tileX * activeTileset->tilewidth + tileX * activeTileset->spacing + activeTileset->margin,
-                    .y = tileY * activeTileset->tileheight  + tileY * activeTileset->spacing + activeTileset->margin,
-                    .width = activeTileset->tilewidth,
-                    .height = activeTileset->tileheight
-                };
-
-                pntr_draw_image_rec(dst, (pntr_image*)activeTileset->image.ptr, srcRect, posX + x * activeTileset->tilewidth, posY + y * activeTileset->tileheight);
+                else {
+                    pntr_draw_image(dst, tile, posX + x * tile->width, posY + y * tile->height);
+                }
             }
         }
     }
@@ -279,6 +398,7 @@ PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int 
     if (map == NULL) {
         return;
     }
+
     pntr_color background = pntr_get_color(map->backgroundcolor);
     pntr_draw_rectangle_fill(dst, posX, posY, map->tilewidth * map->width, map->tileheight * map->height, background);
     pntr_draw_tiled_layer(dst, map, map->layers, posX, posY, tint);
@@ -288,18 +408,20 @@ PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int 
 #ifdef PNTR_ASSETSYS_API
 /**
  * Load the given cute_tiled_string_t image as a pntr_image.
+ *
+ * @internal
+ * @private
  */
 void _pntr_load_tiled_assetsys_string_texture(assetsys_t* sys, cute_tiled_string_t* image, const char* baseDir) {
-    char fullPath[255];
+    char fullPath[PNTR_PATH_MAX];
     fullPath[0] = '\0';
     PNTR_STRCAT(fullPath, baseDir);
     PNTR_STRCAT(fullPath, image->ptr);
 
-    pntr_image* loadedImage = pntr_load_image_from_assetsys(sys, fullPath);
-    if (loadedImage == NULL) {
-        printf("pntr_tiled: Failed to load image: %s", fullPath);
+    image->ptr = (const char*)pntr_load_image_from_assetsys(sys, fullPath);
+    if (image->ptr == NULL) {
+        printf("pntr_tiled: Failed to load image from assetsys: %s", fullPath);
     }
-    image->ptr = (void*)loadedImage;
 }
 
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName) {
@@ -310,16 +432,14 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, 
     }
 
     cute_tiled_map_t* map = cute_tiled_load_map_from_memory(data, (int)size, 0);
+    pntr_unload_memory(data);
     if (map == NULL) {
-        pntr_unload_memory(data);
         return NULL;
     }
 
-    // Create the baseDir
-    size_t length = 0;
-    while (fileName[length++] != '\0');
-    char* baseDir = pntr_load_memory(length);
-    pntr_memory_copy((void*)baseDir, (void*)fileName, length);
+    // Copy the fileName, along with its null terminator to find the basePath.
+    char baseDir[PNTR_PATH_MAX];
+    pntr_memory_copy((void*)baseDir, (void*)fileName, (size_t)PNTR_STRLEN(fileName));
     _pntr_tiled_path_basedir(baseDir);
 
     cute_tiled_tileset_t* tileset = map->tilesets;
@@ -328,8 +448,7 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, 
         tileset = tileset->next;
     }
 
-    pntr_unload_memory(data);
-    pntr_unload_memory(baseDir);
+    _pntr_load_tiled_tiles(map);
 
     return map;
 }
