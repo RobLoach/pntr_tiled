@@ -413,7 +413,7 @@ PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int 
  * @private
  */
 void _pntr_load_tiled_assetsys_string_texture(assetsys_t* sys, cute_tiled_string_t* image, const char* baseDir) {
-    char fullPath[1024];
+    char fullPath[PNTR_PATH_MAX];
     fullPath[0] = '\0';
     PNTR_STRCAT(fullPath, baseDir);
     PNTR_STRCAT(fullPath, image->ptr);
