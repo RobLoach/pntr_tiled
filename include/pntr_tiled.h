@@ -322,24 +322,29 @@ PNTR_TILED_API void pntr_unload_tiled(cute_tiled_map_t* map) {
 
 void pntr_draw_tiled_layer_tiles(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
     pntr_image* tile;
-    int row;
-    int tile_id;
-    int hflip, vflip, dflip;
+    int tileID, row, gid, hflip, vflip, dflip;
 
 	for (int y = 0; y < layer->height; y++) {
         row = y * layer->width;
 		for (int x = 0; x < layer->width; x++) {
-            // Get the flags for the tile, along with its cleaned gid.
-            tile_id = layer->data[row + x];
-            cute_tiled_get_flags(tile_id, &hflip, &vflip, &dflip);
-            tile_id = cute_tiled_unset_flags(tile_id);
+            // Get the flip flags for the tile, along with its cleaned gid.
+            gid = layer->data[row + x];
+
+            // Get the clean Tile ID
+            tileID = cute_tiled_unset_flags(gid);
 
             // Get the tile from the gid.
-            tile = pntr_get_tiled_tile(map, tile_id);
+            tile = pntr_get_tiled_tile(map, tileID);
 
-            // If it's an active tile, draw it.
             if (tile != NULL) {
-                pntr_draw_image_flipped(dst, tile, posX + x * tile->width, posY + y * tile->height, (bool)hflip, (bool)vflip, (bool)dflip);
+                // See if there are flip flags applied.
+                if (tileID != gid) {
+                    cute_tiled_get_flags(gid, &hflip, &vflip, &dflip);
+                    pntr_draw_image_flipped(dst, tile, posX + x * tile->width, posY + y * tile->height, (bool)hflip, (bool)vflip, (bool)dflip);
+                }
+                else {
+                    pntr_draw_image(dst, tile, posX + x * tile->width, posY + y * tile->height);
+                }
             }
         }
     }
