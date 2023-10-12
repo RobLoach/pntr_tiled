@@ -339,29 +339,7 @@ void pntr_draw_tiled_layer_tiles(pntr_image* dst, cute_tiled_map_t* map, cute_ti
 
             // If it's an active tile, draw it.
             if (tile != NULL) {
-                if (dflip) {
-                    float degrees = 90;
-                    if (hflip) {
-                        degrees += 180;
-                    }
-                    if (vflip) {
-                        //degrees += 90;
-                    }
-                    // TODO: Add pntr_draw_image_flipped(flipDiagonal)
-                    pntr_draw_image_rotated(dst, tile,
-                            posX + x * tile->width + tile->width / 2,
-                            posY + y * tile->height + tile->height / 2,
-                            degrees,
-                            tile->height / 2,
-                            tile->width / 2,
-                            PNTR_FILTER_NEARESTNEIGHBOR);
-                }
-                else if (hflip || vflip) {
-                    pntr_draw_image_flipped(dst, tile, posX + x * tile->width, posY + y * tile->height, (bool)hflip, (bool)vflip);
-                }
-                else {
-                    pntr_draw_image(dst, tile, posX + x * tile->width, posY + y * tile->height);
-                }
+                pntr_draw_image_flipped(dst, tile, posX + x * tile->width, posY + y * tile->height, (bool)hflip, (bool)vflip, (bool)dflip);
             }
         }
     }
