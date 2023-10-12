@@ -312,11 +312,11 @@
                  "id":1,
                  "name":"",
                  "rotation":0,
-                 "type":"",
+                 "type":"player",
                  "visible":true,
                  "width":16,
-                 "x":352,
-                 "y":432
+                 "x":365.662757599909,
+                 "y":400.879274355763
                 }, 
                 {
                  "gid":138,
@@ -327,8 +327,8 @@
                  "type":"portal",
                  "visible":true,
                  "width":16,
-                 "x":384,
-                 "y":432
+                 "x":403.355573266538,
+                 "y":469.952104444191
                 }, 
                 {
                  "gid":162,
@@ -363,14 +363,14 @@
                         {
                          "name":"text",
                          "type":"string",
-                         "value":"Welcome to a simple null0 RPG demo!\n\nI recommend looking in the wells before delving into the underwrold.\n\nGood luck!"
+                         "value":"Welcome to a simple pntr_tile RPG demo!\n\nI recommend looking in the wells before delving into the underwrold.\n\nGood luck!"
                         }],
                  "rotation":0,
                  "type":"sign",
                  "visible":true,
                  "width":16,
-                 "x":304,
-                 "y":384
+                 "x":310.831378799955,
+                 "y":393.86754715549
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -379,7 +379,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":10,
+ "nextobjectid":62,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.10.2",
