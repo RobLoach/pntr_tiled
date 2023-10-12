@@ -21,3 +21,10 @@ set_property(TARGET pntr_tiled_test PROPERTY C_STANDARD 99)
 
 # Set up the test
 add_test(NAME pntr_tiled_test COMMAND pntr_tiled_test)
+
+# Strict
+# if(MSVC)
+#     target_compile_options(pntr_tiled_test PRIVATE /W4 /WX)
+# else()
+#     target_compile_options(pntr_tiled_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+# endif()
