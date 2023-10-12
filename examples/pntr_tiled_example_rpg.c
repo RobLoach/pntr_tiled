@@ -7,7 +7,12 @@
 // just some lil utils to see what is in map
 #include "debug_map.h"
 
-// I find it easier to use tile-objects to represent different objects/orientations (in "logic" layer)
+// I find it easier to use tile-objects to represent
+// different objects/orientations (in "logic" layer.)
+// This can also be done with any object, with properties,
+// if you need something more advanced, but you can encode
+// a lot of the same info in type/name/sprite-id.
+// Think of these as object placeholders.
 typedef enum LogicObject {
     LOGIC_OBJECTS_DOOR = 132,
     LOGIC_OBJECTS_ENEMY_BAT_E = 159,
@@ -62,12 +67,25 @@ typedef enum LogicObject {
 typedef struct AppData {
     struct nk_context* ctx;
     cute_tiled_map_t* map;
+    
+    // current player speed
     int speed;
+    
+    // current camera position
     int x, y;
+    
+    // this tracks single sign dialog popup
     bool sign_open;
     char* sign_text;
+    
+    // these are layers that are drawn over map by update_map_objects
+    pntr_image* layer_player;
+    pntr_image* layer_enemies;
+    pntr_image* layer_things;
 } AppData;
 
+// unload current map and switch to another one
+void map_portal(char* name) {}
 
 // this will update/draw all the map-objects, including player, based on state of things
 void update_map_objects(AppData* appData) {
@@ -111,7 +129,11 @@ void update_map_objects(AppData* appData) {
                 }
 
                 if (strcmp(o->type.ptr, "player") == 0){
-                    // TODO: update position/direction, use gid to work out correct direction tiles
+                    // TODO: update position/direction, use gid to work out correct direction tiles from the characters sheet
+                }
+
+                if (strcmp(o->type.ptr, "enemy") == 0){
+                    // TODO: update position/direction, use gid to work out correct direction tiles from the characters sheet
                 }
 
                 if (strcmp(o->type.ptr, "portal") == 0){
@@ -156,6 +178,14 @@ bool Init(pntr_app* app) {
     appData->sign_text = "";
 
     // print_map(appData->map);
+
+    int w = appData->map->width * appData->map->tilewidth;
+    int h = appData->map->height * appData->map->tileheight;
+
+    // create layers for objects to be drawn on
+    appData->layer_player = pntr_new_image(w, h);
+    appData->layer_enemies = pntr_new_image(w, h);
+    appData->layer_things = pntr_new_image(w, h);
 
     return true;
 }
