@@ -203,7 +203,7 @@ void pntr_draw_tiled_layer_tiles(pntr_image* dst, cute_tiled_map_t* map, cute_ti
             gid = layer->data[(y * layer->width) + x];
             cute_tiled_tileset_t* activeTileset = NULL;
             cute_tiled_tileset_t* tileset = map->tilesets;
-            int tileID;
+            int tileID = -1;
 
             while (tileset) {
                 if (gid >= tileset->firstgid && gid < tileset->firstgid + tileset->tilecount) {
@@ -226,9 +226,6 @@ void pntr_draw_tiled_layer_tiles(pntr_image* dst, cute_tiled_map_t* map, cute_ti
                 };
 
                 pntr_draw_image_rec(dst, (pntr_image*)activeTileset->image.ptr, srcRect, posX + x * activeTileset->tilewidth, posY + y * activeTileset->tileheight);
-            }
-            else {
-                printf("Tile not found: %d\n", gid);
             }
         }
     }
