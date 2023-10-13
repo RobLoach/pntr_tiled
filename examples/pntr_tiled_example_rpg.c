@@ -7,12 +7,14 @@
 // just some lil utils to see what is in map
 #include "debug_map.h"
 
+// Even though these are in map, they are not drawn.
 // I find it easier to use tile-objects to represent
-// different objects/orientations (in "logic" layer.)
+// different objects/orientations. So, I setup a tileset
+// that is just the stuff, then put it on "logic" layer.
 // This can also be done with any object, with properties,
 // if you need something more advanced, but you can encode
-// a lot of the same info in type/name/sprite-id.
-// Think of these as object placeholders.
+// a lot of the same info in type/name/sprite-id, and I
+// like that I can see it in map-editor, more quickly.
 typedef enum LogicObject {
     LOGIC_OBJECTS_DOOR = 132,
     LOGIC_OBJECTS_ENEMY_BAT_E = 159,
@@ -71,25 +73,48 @@ typedef struct AppData {
     // current player speed
     int speed;
     
-    // current camera position
+    // current camera (map-draw) position
     int x, y;
     
     // this tracks single sign dialog popup
-    bool sign_open;
+    // set to NULL or current text that should show on screen
     char* sign_text;
     
     // these are layers that are drawn over map by update_map_objects
     pntr_image* layer_player;
     pntr_image* layer_enemies;
     pntr_image* layer_things;
+
+    // these are spritesheets that will be used to draw objects
+    // generally it;s a good idea to put them all togther on one
+    // but this is how I had the map setup
+    pntr_image* sprites_basictiles;
+    pntr_image* sprites_characters;
+    pntr_image* sprites_things;
 } AppData;
 
 // unload current map and switch to another one
 void map_portal(char* name) {}
 
 // this will update/draw all the map-objects, including player, based on state of things
-void update_map_objects(AppData* appData) {
+void update_map_objects(AppData* appData, int deltaTime) {
     cute_tiled_layer_t* layer = appData->map->layers;
+
+    // TODO: check keys to update "wants to move" (to change sprite-facing direction, check collisionsm, etc)
+
+    // Keyboard/Gamepad
+    // if (pntr_app_key_down(app, PNTR_APP_KEY_LEFT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_LEFT)) {
+    //     appData->x += appData->speed * pntr_app_delta_time(app);
+    // }
+    // else if (pntr_app_key_down(app, PNTR_APP_KEY_RIGHT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_RIGHT)) {
+    //     appData->x -= appData->speed * pntr_app_delta_time(app);
+    // }
+    // if (pntr_app_key_down(app, PNTR_APP_KEY_UP) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_UP)) {
+    //     appData->y += appData->speed * pntr_app_delta_time(app);
+    // }
+    // else if (pntr_app_key_down(app, PNTR_APP_KEY_DOWN) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_DOWN)) {
+    //     appData->y -= appData->speed * pntr_app_delta_time(app);
+    // }
 
     while(layer) {
         printf("LAYER: %s\n", layer->name.ptr);
@@ -110,9 +135,47 @@ void update_map_objects(AppData* appData) {
                 int tileX = (int) (o->x/16.0);
                 int tileY = (int) (o->y/16.0);
 
+                // these are the image coordinates
+                int posX = (int) o->x;
+                int posY = (int) o->y;
+
+                // this will be used to draw things
+                pntr_rectangle rect;
+
                 printf("  OBJECT (%dx%d) - %d: %s (%s)\n", tileX, tileY, gid, o->name.ptr, o->type.ptr);
 
-                if (strcmp(o->type.ptr, "sign") == 0){
+                if (strcmp(o->type.ptr, "player") == 0){
+                    // TODO: update position/direction, use gid to work out correct direction tiles from the characters sheet
+                    if (gid == LOGIC_OBJECTS_PLAYER_N) {
+
+                    }
+                }
+
+                else if (strcmp(o->type.ptr, "enemy") == 0){
+                    // TODO: update position/direction, use gid to work out correct direction tiles from the characters sheet
+                }
+
+                else if (strcmp(o->type.ptr, "portal") == 0){
+                    // TODO: you can figure out the portal tiles from the gid.
+                }
+
+                else if (strcmp(o->type.ptr, "trap") == 0){
+                    // TODO: you can figure out the trap tiles from the gid.
+                }
+
+                else if (strcmp(o->type.ptr, "loot") == 0){
+                    // TODO: you can figure out the loot prize from the name.
+                }
+
+                else if (strcmp(o->type.ptr, "switch") == 0){
+                    // TODO: you can figure out the switch tiles from the gid, the variable it toggles is the name.
+                }
+
+                else if (strcmp(o->type.ptr, "animaton") == 0){
+                    // TODO: you can figure out the animation tiles from the gid.
+                }
+
+                else if (strcmp(o->type.ptr, "sign") == 0){
                     char* text;
                     for (int i=0; i < o->property_count; i++) {
                         cute_tiled_property_t* p = o->properties + i;
@@ -120,40 +183,7 @@ void update_map_objects(AppData* appData) {
                             printf("%s\n---\n", p->data.string.ptr);
                             // TODO: draw sign, or show text
                         }
-
-                        if (strcmp(o->type.ptr, "enemy") == 0){
-                            // TODO: you can figure out the enemy tiles form the gid.
-                            // it's not a direct usage, but it's a marker (see LogicObject) that indicates whcih enemy/direction
-                        }
                     }
-                }
-
-                if (strcmp(o->type.ptr, "player") == 0){
-                    // TODO: update position/direction, use gid to work out correct direction tiles from the characters sheet
-                }
-
-                if (strcmp(o->type.ptr, "enemy") == 0){
-                    // TODO: update position/direction, use gid to work out correct direction tiles from the characters sheet
-                }
-
-                if (strcmp(o->type.ptr, "portal") == 0){
-                    // TODO: you can figure out the portal tiles from the gid.
-                }
-
-                if (strcmp(o->type.ptr, "trap") == 0){
-                    // TODO: you can figure out the trap tiles from the gid.
-                }
-
-                if (strcmp(o->type.ptr, "loot") == 0){
-                    // TODO: you can figure out the loot prize from the name.
-                }
-
-                if (strcmp(o->type.ptr, "switch") == 0){
-                    // TODO: you can figure out the switch tiles from the gid, the variable it toggles is the name.
-                }
-
-                if (strcmp(o->type.ptr, "animaton") == 0){
-                    // TODO: you can figure out the animation tiles from the gid.
                 }
 
 
@@ -174,8 +204,7 @@ bool Init(pntr_app* app) {
     appData->y = 0;
     appData->speed = 200;
 
-    appData->sign_open = false;
-    appData->sign_text = "";
+    appData->sign_text = NULL;
 
     // print_map(appData->map);
 
@@ -187,25 +216,19 @@ bool Init(pntr_app* app) {
     appData->layer_enemies = pntr_new_image(w, h);
     appData->layer_things = pntr_new_image(w, h);
 
+    // setup all the spritesheets for objects
+    // TODO: are these already loaded/quaded by map?
+    appData->sprites_basictiles = pntr_load_image("resources/rpg/basictiles.png");
+    appData->sprites_characters = pntr_load_image("resources/rpg/characters.png");
+    appData->sprites_things = pntr_load_image("resources/rpg/things.png");
+
     return true;
 }
 
 bool Update(pntr_app* app, pntr_image* screen) {
     AppData* appData = (AppData*)pntr_app_userdata(app);
 
-    // Keyboard/Gamepad
-    if (pntr_app_key_down(app, PNTR_APP_KEY_LEFT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_LEFT)) {
-        appData->x += appData->speed * pntr_app_delta_time(app);
-    }
-    else if (pntr_app_key_down(app, PNTR_APP_KEY_RIGHT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_RIGHT)) {
-        appData->x -= appData->speed * pntr_app_delta_time(app);
-    }
-    if (pntr_app_key_down(app, PNTR_APP_KEY_UP) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_UP)) {
-        appData->y += appData->speed * pntr_app_delta_time(app);
-    }
-    else if (pntr_app_key_down(app, PNTR_APP_KEY_DOWN) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_DOWN)) {
-        appData->y -= appData->speed * pntr_app_delta_time(app);
-    }
+    // this is "camera" behavior, so you can move the camera around, seperate from the player
 
     // Mouse
     if (pntr_app_mouse_button_down(app, PNTR_APP_MOUSE_BUTTON_LEFT)) {
@@ -234,7 +257,7 @@ bool Update(pntr_app* app, pntr_image* screen) {
     pntr_draw_tiled(screen, appData->map, appData->x, appData->y, PNTR_WHITE);
 
     // update all map objects, and draw them
-    update_map_objects(appData);
+    update_map_objects(appData, pntr_app_delta_time(app));
 
     return true;
 }
@@ -242,6 +265,8 @@ bool Update(pntr_app* app, pntr_image* screen) {
 void Close(pntr_app* app) {
     AppData* appData = (AppData*)pntr_app_userdata(app);
     pntr_unload_tiled(appData->map);
+
+    // TODO: unload layers & sprites
 }
 
 pntr_app Main(int argc, char* argv[]) {
