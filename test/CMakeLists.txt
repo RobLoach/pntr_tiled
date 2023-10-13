@@ -17,14 +17,14 @@ target_link_libraries(pntr_tiled_test PUBLIC
     pntr_tiled
     pntr_assetsys
 )
-set_property(TARGET pntr_tiled_test PROPERTY C_STANDARD 99)
+set_property(TARGET pntr_tiled_test PROPERTY C_STANDARD 11)
 
 # Set up the test
 add_test(NAME pntr_tiled_test COMMAND pntr_tiled_test)
 
 # Strict
-# if(MSVC)
-#     target_compile_options(pntr_tiled_test PRIVATE /W4 /WX)
-# else()
-#     target_compile_options(pntr_tiled_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
-# endif()
+if(MSVC)
+    target_compile_options(pntr_tiled_test PRIVATE /W4 /WX)
+else()
+    target_compile_options(pntr_tiled_test PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()

@@ -73,6 +73,10 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, 
 #ifndef PNTR_TILED_IMPLEMENTATION_ONCE
 #define PNTR_TILED_IMPLEMENTATION_ONCE
 
+#if !defined(PNTR_UNUSED)
+    #define PNTR_UNUSED(x) (void)x
+#endif
+
 #ifndef PNTR_STRRCHR
     #include <string.h>
     #define PNTR_STRRCHR strrchr
@@ -139,7 +143,7 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, 
 #define CUTE_TILED_SEEK_SET 0
 #define CUTE_TILED_SEEK_END 0
 #define CUTE_TILED_FILE void
-#define CUTE_TILED_FOPEN(path, state) NULL
+#define CUTE_TILED_FOPEN(path, state) (void*)path
 #define CUTE_TILED_FSEEK(fp, num, seekpart)
 #define CUTE_TILED_FREAD(data, sz, num, fp)
 #define CUTE_TILED_FTELL(fp) 0
@@ -156,14 +160,15 @@ extern "C" {
  * @internal
  * @private
  */
-char *_pntr_tiled_find_last_slash(const char *str) {
-   const char *slash     = PNTR_STRRCHR(str, '/');
-   const char *backslash = PNTR_STRRCHR(str, '\\');
+char* _pntr_tiled_find_last_slash(const char* str) {
+    const char *slash     = PNTR_STRRCHR(str, '/');
+    const char *backslash = PNTR_STRRCHR(str, '\\');
 
-   if (!slash || (backslash > slash))
-      return (char*)backslash;
-   else
-      return (char*)slash;
+    if (!slash || (backslash > slash)) {
+        return (char*)backslash;
+    }
+
+    return (char*)slash;
 }
 
 /**
@@ -172,17 +177,18 @@ char *_pntr_tiled_find_last_slash(const char *str) {
  * @internal
  * @private
  */
-void _pntr_tiled_path_basedir(char *path) {
-   char *last = NULL;
-   if (!path || path[0] == '\0' || path[1] == '\0')
-      return;
+void _pntr_tiled_path_basedir(char* path) {
+    char *last = NULL;
+    if (!path || path[0] == '\0' || path[1] == '\0') {
+        return;
+    }
 
-   if ((last = _pntr_tiled_find_last_slash(path)))
-      last[1] = '\0';
-   else
-   {
-      path[0] = '\0';
-   }
+    if ((last = _pntr_tiled_find_last_slash(path))) {
+        last[1] = '\0';
+    }
+    else {
+        path[0] = '\0';
+    }
 }
 
 /**
@@ -270,8 +276,14 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled(const char* fileName) {
     return output;
 }
 
+/**
+ * Replaces the "image" with pntr_image.
+ *
+ * @param image The string image to replace.
+ * @param baseDir The base directory where the map file was loaded.
+ */
 void _pntr_load_tiled_string_texture(cute_tiled_string_t* image, const char* baseDir) {
-    // TODO: Allow loading images from a base64 embedded image.
+    // TODO: Allow loading images from a base64 embedded image: https://github.com/RobLoach/TiledExportExtensions
 
     // Concatenate the baseDir with the image path.
     char fullPath[PNTR_PATH_MAX];
@@ -292,13 +304,14 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_memory(const unsigned char
         return NULL;
     }
 
+    // Load all the tileset images.
     cute_tiled_tileset_t* tileset = map->tilesets;
     while (tileset) {
         _pntr_load_tiled_string_texture(&tileset->image, baseDir);
         tileset = tileset->next;
     }
 
-    // Load the individual tiles.
+    // Load the individual tiles as subimages.
     _pntr_load_tiled_tiles(map);
 
     return map;
@@ -324,6 +337,9 @@ PNTR_TILED_API void pntr_unload_tiled(cute_tiled_map_t* map) {
 }
 
 PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map, int gid, int posX, int posY, pntr_color tint) {
+    // TODO: Add use of tint
+    PNTR_UNUSED(tint);
+
     // Get the clean Tile ID
     int tileID = cute_tiled_unset_flags(gid);
 
@@ -348,12 +364,10 @@ PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map,
 }
 
 PNTR_TILED_API void pntr_draw_tiled_layer_tiles(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
-    int row;
 	for (int y = 0; y < layer->height; y++) {
-        row = y * layer->width;
 		for (int x = 0; x < layer->width; x++) {
             // Draw the tile from the gid.
-            pntr_draw_tiled_tile(dst, map, layer->data[row + x],
+            pntr_draw_tiled_tile(dst, map, layer->data[y * layer->width + x],
                 // TODO: Is the map tile width/height the same as the gid's tile width/height?
                 posX + x * map->tilewidth,
                 posY + y * map->tileheight,
