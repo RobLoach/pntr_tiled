@@ -16,55 +16,64 @@
 // a lot of the same info in type/name/sprite-id, and I
 // like that I can see it in map-editor, more quickly.
 typedef enum LogicObject {
-    LOGIC_OBJECTS_DOOR = 132,
-    LOGIC_OBJECTS_ENEMY_BAT_E = 159,
-    LOGIC_OBJECTS_ENEMY_BAT_N = 165,
-    LOGIC_OBJECTS_ENEMY_BAT_S = 147,
-    LOGIC_OBJECTS_ENEMY_BAT_W = 153,
-    LOGIC_OBJECTS_ENEMY_BLOB_E = 135,
-    LOGIC_OBJECTS_ENEMY_BLOB_N = 141,
-    LOGIC_OBJECTS_ENEMY_BLOB_S = 123,
-    LOGIC_OBJECTS_ENEMY_BLOB_W = 129,
-    LOGIC_OBJECTS_ENEMY_GHOST_E = 136,
-    LOGIC_OBJECTS_ENEMY_GHOST_N = 142,
-    LOGIC_OBJECTS_ENEMY_GHOST_S = 124,
-    LOGIC_OBJECTS_ENEMY_GHOST_W = 130,
-    LOGIC_OBJECTS_ENEMY_SKELETON_E = 134,
-    LOGIC_OBJECTS_ENEMY_SKELETON_N = 140,
-    LOGIC_OBJECTS_ENEMY_SKELETON_S = 122,
-    LOGIC_OBJECTS_ENEMY_SKELETON_W = 128,
-    LOGIC_OBJECTS_ENEMY_SPIDER_E = 158,
-    LOGIC_OBJECTS_ENEMY_SPIDER_N = 164,
-    LOGIC_OBJECTS_ENEMY_SPIDER_S = 146,
-    LOGIC_OBJECTS_ENEMY_SPIDER_W = 152,
-    LOGIC_OBJECTS_FIREPLACE = 167,
-    LOGIC_OBJECTS_GATE = 126,
-    LOGIC_OBJECTS_LAVA = 154,
-    LOGIC_OBJECTS_LOOT = 161,
-    LOGIC_OBJECTS_PLAYER_E = 133,
-    LOGIC_OBJECTS_PLAYER_N = 139,
-    LOGIC_OBJECTS_PLAYER_S = 121,
-    LOGIC_OBJECTS_PLAYER_W = 127,
-    LOGIC_OBJECTS_POT = 125,
-    LOGIC_OBJECTS_SIGN = 168,
-    LOGIC_OBJECTS_STAIRS_DOWN_E = 150,
-    LOGIC_OBJECTS_STAIRS_DOWN_W = 138,
-    LOGIC_OBJECTS_STAIRS_UP_E = 144,
-    LOGIC_OBJECTS_STAIRS_UP_W = 156,
-    LOGIC_OBJECTS_SWITCH_BLUE = 151,
-    LOGIC_OBJECTS_SWITCH_GREEN = 163,
-    LOGIC_OBJECTS_SWITCH_ORANGE = 157,
-    LOGIC_OBJECTS_SWITCH_RED = 145,
-    LOGIC_OBJECTS_TORCH_BLUE = 137,
-    LOGIC_OBJECTS_TORCH_GREEN = 149,
-    LOGIC_OBJECTS_TORCH_ORANGE = 155,
-    LOGIC_OBJECTS_TORCH_RED = 143,
-    LOGIC_OBJECTS_TORCH_YELLOW = 131,
-    LOGIC_OBJECTS_TRAP_FIRE = 166,
-    LOGIC_OBJECTS_TRAP_SPIKES = 160,
-    LOGIC_OBJECTS_WATER = 148,
-    LOGIC_OBJECTS_WELL = 162
+    LOGIC_PLAYER_E = 133,
+    LOGIC_PLAYER_N = 139,
+    LOGIC_PLAYER_S = 121,
+    LOGIC_PLAYER_W = 127,
+
+    LOGIC_LOOT = 161,
+    LOGIC_POT = 125,
+    LOGIC_SIGN = 168,
+
+    LOGIC_TORCH_BLUE = 137,
+    LOGIC_TORCH_GREEN = 149,
+    LOGIC_TORCH_ORANGE = 155,
+    LOGIC_TORCH_RED = 143,
+    LOGIC_TORCH_YELLOW = 131,
+
+    LOGIC_ANIM_FIREPLACE = 167,
+    LOGIC_ANIM_WATER = 148,
+
+    LOGIC_ENEMY_BAT_E = 159,
+    LOGIC_ENEMY_BAT_N = 165,
+    LOGIC_ENEMY_BAT_S = 147,
+    LOGIC_ENEMY_BAT_W = 153,
+    LOGIC_ENEMY_BLOB_E = 135,
+    LOGIC_ENEMY_BLOB_N = 141,
+    LOGIC_ENEMY_BLOB_S = 123,
+    LOGIC_ENEMY_BLOB_W = 129,
+    LOGIC_ENEMY_GHOST_E = 136,
+    LOGIC_ENEMY_GHOST_N = 142,
+    LOGIC_ENEMY_GHOST_S = 124,
+    LOGIC_ENEMY_GHOST_W = 130,
+    LOGIC_ENEMY_SKELETON_E = 134,
+    LOGIC_ENEMY_SKELETON_N = 140,
+    LOGIC_ENEMY_SKELETON_S = 122,
+    LOGIC_ENEMY_SKELETON_W = 128,
+    LOGIC_ENEMY_SPIDER_E = 158,
+    LOGIC_ENEMY_SPIDER_N = 164,
+    LOGIC_ENEMY_SPIDER_S = 146,
+    LOGIC_ENEMY_SPIDER_W = 152,
+
+    LOGIC_PORTAL_DOOR = 132,
+    LOGIC_PORTAL_GATE = 126,
+    LOGIC_PORTAL_STAIRS_DOWN_E = 150,
+    LOGIC_PORTAL_STAIRS_DOWN_W = 138,
+    LOGIC_PORTAL_STAIRS_UP_E = 144,
+    LOGIC_PORTAL_STAIRS_UP_W = 156,
+    LOGIC_PORTAL_WELL = 162,
+
+    LOGIC_SWITCH_BLUE = 151,
+    LOGIC_SWITCH_GREEN = 163,
+    LOGIC_SWITCH_ORANGE = 157,
+    LOGIC_SWITCH_RED = 145,
+
+    LOGIC_TRAP_FIRE = 166,
+    LOGIC_TRAP_LAVA = 154,
+    LOGIC_TRAP_SPIKES = 160
 } LogicObject;
+
+
 
 typedef struct AppData {
     struct nk_context* ctx;
@@ -96,11 +105,17 @@ typedef struct AppData {
 // unload current map and switch to another one
 void map_portal(char* name) {}
 
-// this will update/draw all the map-objects, including player, based on state of things
-void update_map_objects(AppData* appData, int deltaTime) {
-    cute_tiled_layer_t* layer = appData->map->layers;
+// given a tile-number (0-indexed) return rec of image
+pntr_rectangle get_tile_rec(int id, pntr_image* src) {
+    int tw = src->width / 16;
+    pntr_rectangle r = { .x=(id % tw) * 16, .y=(id / tw) * 16, .width=16, .height=16 };
+    return r;
+}
 
-    // TODO: check keys to update "wants to move" (to change sprite-facing direction, check collisionsm, etc)
+
+// this will update/draw all the map-objects, including player, based on state of things
+void update_map_objects(AppData* appData) {
+    // TODO: check keys to update "wants to move" (to change sprite-facing direction, check collisions, etc)
 
     // Keyboard/Gamepad
     // if (pntr_app_key_down(app, PNTR_APP_KEY_LEFT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_LEFT)) {
@@ -115,6 +130,8 @@ void update_map_objects(AppData* appData, int deltaTime) {
     // else if (pntr_app_key_down(app, PNTR_APP_KEY_DOWN) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_DOWN)) {
     //     appData->y -= appData->speed * pntr_app_delta_time(app);
     // }
+
+    cute_tiled_layer_t* layer = appData->map->layers;
 
     while(layer) {
         printf("LAYER: %s\n", layer->name.ptr);
@@ -145,18 +162,79 @@ void update_map_objects(AppData* appData, int deltaTime) {
                 printf("  OBJECT (%dx%d) - %d: %s (%s)\n", tileX, tileY, gid, o->name.ptr, o->type.ptr);
 
                 if (strcmp(o->type.ptr, "player") == 0){
-                    // TODO: update position/direction, use gid to work out correct direction tiles from the characters sheet
-                    if (gid == LOGIC_OBJECTS_PLAYER_N) {
-
+                    // TODO: do animation and update position
+                    if (gid == LOGIC_PLAYER_N) {
+                        // 39, 40, 41
+                        pntr_draw_image_rec(appData->layer_player, appData->sprites_characters, get_tile_rec(40, appData->sprites_characters), posX, posY);
+                    } else if (gid == LOGIC_PLAYER_S) {
+                        // 3, 4, 5
+                        pntr_draw_image_rec(appData->layer_player, appData->sprites_characters, get_tile_rec(4, appData->sprites_characters), posX, posY);
+                    } if (gid == LOGIC_PLAYER_E) {
+                        // 27, 28, 29
+                        pntr_draw_image_rec(appData->layer_player, appData->sprites_characters, get_tile_rec(28, appData->sprites_characters), posX, posY);
+                    } if (gid == LOGIC_PLAYER_W) {
+                        // 15, 16, 17
+                        pntr_draw_image_rec(appData->layer_player, appData->sprites_characters, get_tile_rec(16, appData->sprites_characters), posX, posY);
                     }
                 }
 
                 else if (strcmp(o->type.ptr, "enemy") == 0){
-                    // TODO: update position/direction, use gid to work out correct direction tiles from the characters sheet
+                    int tile_id = 0;
+
+                    if (gid == LOGIC_ENEMY_BAT_E || gid == LOGIC_ENEMY_BAT_N || gid == LOGIC_ENEMY_BAT_S || gid == LOGIC_ENEMY_BAT_W) {
+
+                    }
+                    else if (gid == LOGIC_ENEMY_BLOB_E || gid == LOGIC_ENEMY_BLOB_N || gid == LOGIC_ENEMY_BLOB_S || gid == LOGIC_ENEMY_BLOB_W) {
+
+                    }
+                    else if (gid == LOGIC_ENEMY_GHOST_E || gid == LOGIC_ENEMY_GHOST_N || gid == LOGIC_ENEMY_GHOST_S || gid == LOGIC_ENEMY_GHOST_W) {
+
+                    }
+                    else if (gid == LOGIC_ENEMY_SKELETON_E || gid == LOGIC_ENEMY_SKELETON_N || gid == LOGIC_ENEMY_SKELETON_S || gid == LOGIC_ENEMY_SKELETON_W) {
+
+                    }
+                    else if (gid == LOGIC_ENEMY_SPIDER_E || gid == LOGIC_ENEMY_SPIDER_N || gid == LOGIC_ENEMY_SPIDER_S || gid == LOGIC_ENEMY_SPIDER_W) {
+
+                    }
+
+                    if (tile_id) {
+                        pntr_draw_image_rec(appData->layer_player, appData->sprites_basictiles, get_tile_rec(tile_id, appData->sprites_basictiles), posX, posY);
+                        // TODO: check for near & action button
+                    }
+
                 }
 
                 else if (strcmp(o->type.ptr, "portal") == 0){
-                    // TODO: you can figure out the portal tiles from the gid.
+                    int tile_id = 0;
+
+                    if (gid == LOGIC_PORTAL_DOOR) {
+                        // TODO: this is animated on activation
+                        tile_id = 48;
+                    }
+                    else if (gid == LOGIC_PORTAL_GATE) {
+                        // TODO: this is animated on activation
+                        tile_id = 49;
+                    }
+                    else if (gid == LOGIC_PORTAL_STAIRS_DOWN_E) {
+                        tile_id = 105;
+                    }
+                    else if (gid == LOGIC_PORTAL_STAIRS_DOWN_W) {
+                        tile_id = 104;
+                    }
+                    else if (gid == LOGIC_PORTAL_STAIRS_UP_E) {
+                        tile_id = 113;
+                    }
+                    else if (gid == LOGIC_PORTAL_STAIRS_UP_W) {
+                        tile_id = 112;
+                    }
+                    else if (gid == LOGIC_PORTAL_WELL) {
+                        tile_id = 31;
+                    }
+
+                    if (tile_id) {
+                        pntr_draw_image_rec(appData->layer_player, appData->sprites_basictiles, get_tile_rec(tile_id, appData->sprites_basictiles), posX, posY);
+                        // TODO: check for near & action button
+                    }
                 }
 
                 else if (strcmp(o->type.ptr, "trap") == 0){
@@ -181,7 +259,8 @@ void update_map_objects(AppData* appData, int deltaTime) {
                         cute_tiled_property_t* p = o->properties + i;
                         if (strcmp(p->name.ptr, "text") == 0 && p->type == CUTE_TILED_PROPERTY_STRING){
                             printf("%s\n---\n", p->data.string.ptr);
-                            // TODO: draw sign, or show text
+                            pntr_draw_image_rec(appData->layer_things, appData->sprites_basictiles, get_tile_rec(67, appData->sprites_basictiles), posX, posY);
+                            // TODO: & handle trigger & show text
                         }
                     }
                 }
@@ -257,7 +336,10 @@ bool Update(pntr_app* app, pntr_image* screen) {
     pntr_draw_tiled(screen, appData->map, appData->x, appData->y, PNTR_WHITE);
 
     // update all map objects, and draw them
-    update_map_objects(appData, pntr_app_delta_time(app));
+    update_map_objects(appData);
+    pntr_draw_image(screen, appData->layer_things, appData->x, appData->y);
+    pntr_draw_image(screen, appData->layer_enemies, appData->x, appData->y);
+    pntr_draw_image(screen, appData->layer_player, appData->x, appData->y);
 
     return true;
 }
