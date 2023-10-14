@@ -3,8 +3,8 @@
 #define PNTR_IMPLEMENTATION
 #include "pntr.h"
 
-//#define PNTR_ASSETSYS_IMPLEMENTATION
-//#include "pntr_assetsys.h"
+// #define PNTR_ASSETSYS_IMPLEMENTATION
+// #include "pntr_assetsys.h"
 
 #define PNTR_TILED_IMPLEMENTATION
 #include "pntr_tiled.h"
