@@ -43,7 +43,7 @@ void map_portal(char* name, AppData* appData) {
     appData->y = 0;
     appData->sign_text = NULL;
 
-    // TODO: unload current map
+    pntr_unload_tiled(appData->map);
 
     char fname[80];
     sprintf(fname, "resources/rpg/%s.tmj", name);
@@ -100,6 +100,8 @@ void update_map_objects(AppData* appData) {
                             appData->playerDirection = gid/3;
                         }
                         
+                        // TODO: check playerWalking to see if we need animation
+
                         // draw still player
                         pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec(appData->playerDirection * 3, appData->sprites), appData->playerX, appData->playerY-16);
                     }
@@ -162,6 +164,28 @@ bool Update(pntr_app* app, pntr_image* screen) {
     // update all map objects
     pntr_clear_background(appData->objects, PNTR_BLANK);
     update_map_objects(appData);
+
+    // Keyboard/Gamepad
+    // TODO: check collisions
+    if (pntr_app_key_down(app, PNTR_APP_KEY_LEFT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_LEFT)) {
+        appData->playerX -= appData->speed * pntr_app_delta_time(app);
+        appData->playerWalking = true;
+    }
+    else if (pntr_app_key_down(app, PNTR_APP_KEY_RIGHT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_RIGHT)) {
+        appData->playerX += appData->speed * pntr_app_delta_time(app);
+        appData->playerWalking = true;
+    }
+    else if (pntr_app_key_down(app, PNTR_APP_KEY_UP) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_UP)) {
+        appData->playerY -= appData->speed * pntr_app_delta_time(app);
+        appData->playerWalking = true;
+    }
+    else if (pntr_app_key_down(app, PNTR_APP_KEY_DOWN) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_DOWN)) {
+        appData->playerY += appData->speed * pntr_app_delta_time(app);
+        appData->playerWalking = true;
+    }
+    else {
+        appData->playerWalking = false;
+    }
 
     // draw all map objects
     pntr_draw_image(screen, appData->objects, appData->x, appData->y);
