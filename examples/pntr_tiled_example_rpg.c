@@ -67,6 +67,10 @@ pntr_rectangle get_tile_rec(int id, pntr_image* src) {
     return r;
 }
 
+bool collision_check(pntr_rectangle a, pntr_rectangle b) {
+    return abs(a.x - b.x) < a.width && abs(a.y - b.y) < a.height;
+}
+
 
 // this will update/draw all the map-objects, including player, based on state of things
 void update_map_objects(AppData* appData) {
