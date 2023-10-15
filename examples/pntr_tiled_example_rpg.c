@@ -39,6 +39,8 @@ typedef struct AppData {
     bool playerWalking;
     FaceDirection playerDirection;
     int playerX, playerY;
+
+    float gameTime;
 } AppData;
 
 // unload current map and switch to another one
@@ -67,7 +69,7 @@ pntr_rectangle get_tile_rec(int id, pntr_image* src) {
 
 
 // this will update/draw all the map-objects, including player, based on state of things
-void update_map_objects(AppData* appData, float deltaTime) {
+void update_map_objects(AppData* appData) {
     // TODO: check keys to update "wants to move" (to change sprite-facing direction, check collisions, etc)
 
     cute_tiled_layer_t* layer = appData->map->layers;
@@ -108,8 +110,12 @@ void update_map_objects(AppData* appData, float deltaTime) {
                             appData->playerDirection = gid/3;
                         }
                         
-                        // TODO: handle walking animation
+                        // handle walking animation
                         int frame = 0;
+
+                        if (appData->playerWalking) {
+                            frame = ((int)(appData->gameTime * appData->speed/30) % 2) + 1;
+                        }
 
                         // draw still player
                         pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec((appData->playerDirection * 3) + frame, appData->sprites), appData->playerX, appData->playerY-16);
@@ -147,11 +153,15 @@ bool Init(pntr_app* app) {
     // TODO: are these already loaded/quaded by map?
     appData->sprites = pntr_load_image("resources/rpg/sprites.png");
 
+    appData->gameTime = 0;
+
     return true;
 }
 
 bool Update(pntr_app* app, pntr_image* screen) {
     AppData* appData = (AppData*)pntr_app_userdata(app);
+
+    appData->gameTime += pntr_app_delta_time(app);
 
     // this is "camera" behavior, so you can move the camera around, seperate from the player
 
@@ -172,7 +182,7 @@ bool Update(pntr_app* app, pntr_image* screen) {
 
     // update all map objects
     pntr_clear_background(appData->objects, PNTR_BLANK);
-    update_map_objects(appData, pntr_app_delta_time(app));
+    update_map_objects(appData);
 
     // Keyboard/Gamepad
     // TODO: check collisions
