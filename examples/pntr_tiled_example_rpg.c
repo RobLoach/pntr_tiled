@@ -27,6 +27,10 @@ typedef struct AppData {
     // this will be used to draw sprites
     // it's the same spritesheet in the map
     pntr_image* sprites;
+
+    bool playerWalking;
+    int playerDirection;
+    int playerX, playerY;
 } AppData;
 
 // unload current map and switch to another one
@@ -47,7 +51,7 @@ void update_map_objects(AppData* appData) {
     cute_tiled_layer_t* layer = appData->map->layers;
 
     while(layer) {
-        printf("LAYER: %s\n", layer->name.ptr);
+        // printf("LAYER: %s\n", layer->name.ptr);
 
         // this is the layer where I keep collision-shapes (to block where the player/enemies can go)
         // this could also be done with proper Tiled collision-stuff, this is just how I set it up
@@ -69,17 +73,29 @@ void update_map_objects(AppData* appData) {
                 int posX = (int) o->x;
                 int posY = (int) o->y;
 
-                printf("  OBJECT (%dx%d) - %d: %s (%s)\n", tileX, tileY, gid, o->name.ptr, o->type.ptr);
+                // printf("  OBJECT (%dx%d) - %d: %s (%s)\n", tileX, tileY, gid, o->name.ptr, o->type.ptr);
 
                 // draw the representative tile
                 if (gid) {
-                    pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec(gid-1, appData->sprites), posX, posY-16);
+                    // gid represents player
+                    if (gid < 13) {
+                        // set player position if it has not been set (for initial state)
+                        if (appData->playerX == 0 && appData->playerY == 0) {
+                            appData->playerX = posX;
+                            appData->playerY = posY;
+                            appData->playerDirection = gid/3;
+                        }
+                        
+                        // draw still player
+                        pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec(appData->playerDirection * 3, appData->sprites), appData->playerX, appData->playerY-16);
+                    }
+                    // generic: draw whatever tile
+                    else {
+                        pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec(gid-1, appData->sprites), posX, posY-16);
+                    }
                 }
 
-                // gid represents player
-                if (gid < 13) {
-                    printf("Found player.\n");
-                }
+
 
                 o = o->next;
             }
@@ -102,13 +118,10 @@ bool Init(pntr_app* app) {
 
     // print_map(appData->map);
 
-    int w = appData->map->width * appData->map->tilewidth;
-    int h = appData->map->height * appData->map->tileheight;
-
     // create layer for objects to be drawn on
-    appData->objects = pntr_new_image(w, h);
+    appData->objects = pntr_new_image(appData->map->width * appData->map->tilewidth, appData->map->height * appData->map->tileheight);
 
-    // setup all the spritesheets for objects
+    // setup all the spritesheet for objects
     // TODO: are these already loaded/quaded by map?
     appData->sprites = pntr_load_image("resources/rpg/sprites.png");
 
@@ -124,20 +137,9 @@ bool Update(pntr_app* app, pntr_image* screen) {
     if (pntr_app_mouse_button_down(app, PNTR_APP_MOUSE_BUTTON_LEFT)) {
         appData->x -= pntr_app_mouse_delta_x(app);// * pntr_app_delta_time(app) * app->fps;
         appData->y -= pntr_app_mouse_delta_y(app);// * pntr_app_delta_time(app) * app->fps;
-    }
-
-    // Keep the map within screen bounds
-    if (appData->x > 0) {
-        appData->x = 0;
-    }
-    if (appData->y > 0) {
-        appData->y = 0;
-    }
-    if (appData->x - screen->width < -appData->map->width * appData->map->tilewidth) {
-        appData->x = -appData->map->width * appData->map->tilewidth + screen->width;
-    }
-    if (appData->y - screen->height < -appData->map->height * appData->map->tileheight) {
-        appData->y = -appData->map->height * appData->map->tileheight + screen->height;
+    } else {
+        appData->x =  screen->width - appData->playerX - (screen->width/2) + 8;
+        appData->y =  screen->height - appData->playerY - (screen->height/2) + 8;
     }
 
     // Clear the screen
@@ -146,9 +148,14 @@ bool Update(pntr_app* app, pntr_image* screen) {
     // Draw the map
     pntr_draw_tiled(screen, appData->map, appData->x, appData->y, PNTR_WHITE);
 
-    // update all map objects, and draw them
+    // update all map objects
+    pntr_clear_background(appData->objects, PNTR_BLANK);
     update_map_objects(appData);
+
+    // draw all map objects
     pntr_draw_image(screen, appData->objects, appData->x, appData->y);
+
+    // TODO: handle keys to update playerX/playerY
 
     return true;
 }
