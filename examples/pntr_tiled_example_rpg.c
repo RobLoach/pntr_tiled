@@ -44,20 +44,6 @@ pntr_rectangle get_tile_rec(int id, pntr_image* src) {
 void update_map_objects(AppData* appData) {
     // TODO: check keys to update "wants to move" (to change sprite-facing direction, check collisions, etc)
 
-    // Keyboard/Gamepad
-    // if (pntr_app_key_down(app, PNTR_APP_KEY_LEFT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_LEFT)) {
-    //     appData->x += appData->speed * pntr_app_delta_time(app);
-    // }
-    // else if (pntr_app_key_down(app, PNTR_APP_KEY_RIGHT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_RIGHT)) {
-    //     appData->x -= appData->speed * pntr_app_delta_time(app);
-    // }
-    // if (pntr_app_key_down(app, PNTR_APP_KEY_UP) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_UP)) {
-    //     appData->y += appData->speed * pntr_app_delta_time(app);
-    // }
-    // else if (pntr_app_key_down(app, PNTR_APP_KEY_DOWN) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_DOWN)) {
-    //     appData->y -= appData->speed * pntr_app_delta_time(app);
-    // }
-
     cute_tiled_layer_t* layer = appData->map->layers;
 
     while(layer) {
@@ -83,52 +69,17 @@ void update_map_objects(AppData* appData) {
                 int posX = (int) o->x;
                 int posY = (int) o->y;
 
-                // this will be used to draw things
-                pntr_rectangle rect;
-
                 printf("  OBJECT (%dx%d) - %d: %s (%s)\n", tileX, tileY, gid, o->name.ptr, o->type.ptr);
 
-                if (strcmp(o->type.ptr, "player") == 0){
-                    // TODO: do animation and update position
-                    pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec(gid, appData->sprites), posX, posY);
+                // draw the representative tile
+                if (gid) {
+                    pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec(gid-1, appData->sprites), posX, posY);
                 }
 
-                else if (strcmp(o->type.ptr, "enemy") == 0){
-                    // TODO you can figure out the enemy type/direction from the gid.
+                // gid represents player
+                if (gid < 13) {
+                    
                 }
-
-                else if (strcmp(o->type.ptr, "portal") == 0){
-                    // TODO you can figure out the tile from the gid, the desitnation from the name.
-                }
-
-                else if (strcmp(o->type.ptr, "trap") == 0){
-                    // TODO: you can figure out the trap tiles from the gid.
-                }
-
-                else if (strcmp(o->type.ptr, "loot") == 0){
-                    // TODO: you can figure out the loot prize from the name.
-                }
-
-                else if (strcmp(o->type.ptr, "switch") == 0){
-                    // TODO: you can figure out the switch tiles from the gid, the variable it toggles is the name.
-                }
-
-                else if (strcmp(o->type.ptr, "animaton") == 0){
-                    // TODO: you can figure out the animation tiles from the gid.
-                }
-
-                else if (strcmp(o->type.ptr, "sign") == 0){
-                    // char* text;
-                    // for (int i=0; i < o->property_count; i++) {
-                    //     cute_tiled_property_t* p = o->properties + i;
-                    //     if (strcmp(p->name.ptr, "text") == 0 && p->type == CUTE_TILED_PROPERTY_STRING){
-                    //         printf("%s\n---\n", p->data.string.ptr);
-                    //         pntr_draw_image_rec(appData->layer_things, appData->sprites_basictiles, get_tile_rec(67, appData->sprites_basictiles), posX, posY);
-                    //         // TODO: & handle trigger & show text
-                    //     }
-                    // }
-                }
-
 
                 o = o->next;
             }
