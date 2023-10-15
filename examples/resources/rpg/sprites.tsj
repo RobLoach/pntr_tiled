@@ -6,7 +6,7 @@
  "name":"sprites",
  "spacing":0,
  "tilecount":276,
- "tiledversion":"1.9.2",
+ "tiledversion":"1.10.2",
  "tileheight":16,
  "tiles":[
         {
@@ -867,5 +867,5 @@
         }],
  "tilewidth":16,
  "type":"tileset",
- "version":"1.9"
+ "version":"1.10"
 }

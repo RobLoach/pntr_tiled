@@ -121,7 +121,7 @@ void update_map_objects(AppData* appData) {
                             frame = ((int)(appData->gameTime * appData->speed/30) % 2) + 1;
                         }
 
-                        // draw still player
+                        // draw player
                         pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec((appData->playerDirection * 3) + frame, appData->sprites), appData->playerX, appData->playerY-16);
                     }
                     // generic: draw whatever tile
@@ -189,7 +189,6 @@ bool Update(pntr_app* app, pntr_image* screen) {
     update_map_objects(appData);
 
     // Keyboard/Gamepad
-    // TODO: check collisions
     bool anyDirectionKey = false;
     if (pntr_app_key_down(app, PNTR_APP_KEY_LEFT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_LEFT)) {
         appData->playerX -= appData->speed * pntr_app_delta_time(app);
@@ -212,7 +211,6 @@ bool Update(pntr_app* app, pntr_image* screen) {
         anyDirectionKey = true;
         appData->playerDirection = FACE_SOUTH;
     }
-    
     appData->playerWalking = anyDirectionKey;
 
     // draw all map objects
