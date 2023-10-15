@@ -78,7 +78,7 @@ void update_map_objects(AppData* appData) {
 
                 // gid represents player
                 if (gid < 13) {
-                    
+                    printf("Found player.\n");
                 }
 
                 o = o->next;
