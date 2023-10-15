@@ -73,7 +73,7 @@ void update_map_objects(AppData* appData) {
 
                 // draw the representative tile
                 if (gid) {
-                    pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec(gid-1, appData->sprites), posX, posY);
+                    pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec(gid-1, appData->sprites), posX, posY-16);
                 }
 
                 // gid represents player
