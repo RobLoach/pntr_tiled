@@ -7,6 +7,14 @@
 // just some lil utils to see what is in map
 #include "debug_map.h"
 
+typedef enum FaceDirection {
+    FACE_SOUTH,
+    FACE_NORTH,
+    FACE_EAST,
+    FACE_WEST
+} FaceDirection;
+
+
 typedef struct AppData {
     struct nk_context* ctx;
     cute_tiled_map_t* map;
@@ -29,7 +37,7 @@ typedef struct AppData {
     pntr_image* sprites;
 
     bool playerWalking;
-    int playerDirection;
+    FaceDirection playerDirection;
     int playerX, playerY;
 } AppData;
 
@@ -59,7 +67,7 @@ pntr_rectangle get_tile_rec(int id, pntr_image* src) {
 
 
 // this will update/draw all the map-objects, including player, based on state of things
-void update_map_objects(AppData* appData) {
+void update_map_objects(AppData* appData, float deltaTime) {
     // TODO: check keys to update "wants to move" (to change sprite-facing direction, check collisions, etc)
 
     cute_tiled_layer_t* layer = appData->map->layers;
@@ -100,10 +108,11 @@ void update_map_objects(AppData* appData) {
                             appData->playerDirection = gid/3;
                         }
                         
-                        // TODO: check playerWalking to see if we need animation
+                        // TODO: handle walking animation
+                        int frame = 0;
 
                         // draw still player
-                        pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec(appData->playerDirection * 3, appData->sprites), appData->playerX, appData->playerY-16);
+                        pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec((appData->playerDirection * 3) + frame, appData->sprites), appData->playerX, appData->playerY-16);
                     }
                     // generic: draw whatever tile
                     else {
@@ -163,29 +172,34 @@ bool Update(pntr_app* app, pntr_image* screen) {
 
     // update all map objects
     pntr_clear_background(appData->objects, PNTR_BLANK);
-    update_map_objects(appData);
+    update_map_objects(appData, pntr_app_delta_time(app));
 
     // Keyboard/Gamepad
     // TODO: check collisions
+    bool anyDirectionKey = false;
     if (pntr_app_key_down(app, PNTR_APP_KEY_LEFT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_LEFT)) {
         appData->playerX -= appData->speed * pntr_app_delta_time(app);
-        appData->playerWalking = true;
+        anyDirectionKey = true;
+        appData->playerDirection = FACE_WEST;
     }
     else if (pntr_app_key_down(app, PNTR_APP_KEY_RIGHT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_RIGHT)) {
         appData->playerX += appData->speed * pntr_app_delta_time(app);
-        appData->playerWalking = true;
+        anyDirectionKey = true;
+        appData->playerDirection = FACE_EAST;
     }
-    else if (pntr_app_key_down(app, PNTR_APP_KEY_UP) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_UP)) {
+    
+    if (pntr_app_key_down(app, PNTR_APP_KEY_UP) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_UP)) {
         appData->playerY -= appData->speed * pntr_app_delta_time(app);
-        appData->playerWalking = true;
+        anyDirectionKey = true;
+        appData->playerDirection = FACE_NORTH;
     }
     else if (pntr_app_key_down(app, PNTR_APP_KEY_DOWN) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_DOWN)) {
         appData->playerY += appData->speed * pntr_app_delta_time(app);
-        appData->playerWalking = true;
+        anyDirectionKey = true;
+        appData->playerDirection = FACE_SOUTH;
     }
-    else {
-        appData->playerWalking = false;
-    }
+    
+    appData->playerWalking = anyDirectionKey;
 
     // draw all map objects
     pntr_draw_image(screen, appData->objects, appData->x, appData->y);
