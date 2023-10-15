@@ -34,7 +34,21 @@ typedef struct AppData {
 } AppData;
 
 // unload current map and switch to another one
-void map_portal(char* name) {}
+void map_portal(char* name, AppData* appData) {
+    // reset so it will be pulled from initial position/direction in map
+    appData->playerX = 0;
+    appData->playerY = 0;
+
+    appData->x = 0;
+    appData->y = 0;
+    appData->sign_text = NULL;
+
+    // TODO: unload current map
+
+    char fname[80];
+    sprintf(fname, "resources/rpg/%s.tmj", name);
+    appData->map = pntr_load_tiled(fname);
+}
 
 // given a tile-number (0-indexed) return rec of image
 pntr_rectangle get_tile_rec(int id, pntr_image* src) {
@@ -108,13 +122,10 @@ void update_map_objects(AppData* appData) {
 bool Init(pntr_app* app) {
     AppData* appData = pntr_load_memory(sizeof(AppData));
     pntr_app_set_userdata(app, appData);
-
-    appData->map = pntr_load_tiled("resources/rpg/welcome.tmj");
-    appData->x = 0;
-    appData->y = 0;
+    
     appData->speed = 200;
 
-    appData->sign_text = NULL;
+    map_portal("welcome", appData);
 
     // print_map(appData->map);
 
