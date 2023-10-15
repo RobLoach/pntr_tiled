@@ -17,7 +17,7 @@ target_link_libraries(pntr_tiled_test PUBLIC
     pntr_tiled
     pntr_assetsys
 )
-set_property(TARGET pntr_tiled_test PROPERTY C_STANDARD 99)
+set_property(TARGET pntr_tiled_test PROPERTY C_STANDARD 11)
 
 # Set up the test
 add_test(NAME pntr_tiled_test COMMAND pntr_tiled_test)

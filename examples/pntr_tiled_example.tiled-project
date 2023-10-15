@@ -1,13 +1,6 @@
 {
-    "automappingRulesFile": "",
-    "commands": [
-    ],
     "compatibilityVersion": 1100,
     "folders": [
         "."
-    ],
-    "properties": [
-    ],
-    "propertyTypes": [
     ]
 }
