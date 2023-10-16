@@ -103,6 +103,7 @@ PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_colo
  * @param deltaTime The amount of time that changed from the last update, in seconds.
  */
 PNTR_TILED_API void pntr_update_tiled(cute_tiled_map_t* map, float deltaTime);
+PNTR_TILED_API void pntr_draw_tiled_layer_objectgroup(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 
 #ifdef PNTR_ASSETSYS_API
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
@@ -574,19 +575,20 @@ PNTR_TILED_API void pntr_draw_tiled_object(pntr_image* dst, cute_tiled_map_t* ma
         return;
     }
 
-    if (object->gid != 0) {
-        pntr_draw_tiled_tile(dst, map, object->gid, posX, posY, tint);
-    }
+    #ifdef PNTR_DRAW_TILED_OBJECT
+        PNTR_DRAW_TILED_OBJECT(dst, map, object, posX, posY, tint);
+    #else
+        if (object->gid != 0) {
+            // TODO: Support rotation and stretching of object tile drawing.
+            pntr_draw_tiled_tile(dst, map, object->gid, posX, posY - object->height, tint);
+        }
+    #endif
 }
 
 PNTR_TILED_API void pntr_draw_tiled_layer_objectgroup(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
     cute_tiled_object_t* object = layer->objects;
     while (object) {
-        #ifndef PNTR_DRAW_TILED_OBJECT
-        #define PNTR_DRAW_TILED_OBJECT pntr_draw_tiled_object
-        #endif
-        PNTR_DRAW_TILED_OBJECT(dst, map, object, posX + object->x, posY + object->y - object->height, tint);
-
+        pntr_draw_tiled_object(dst, map, object, posX + object->x, posY + object->y, tint);
         object = object->next;
     }
 }
