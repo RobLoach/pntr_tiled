@@ -319,8 +319,8 @@ struct cute_tiled_layer_t
 	float opacity;                       // Value between 0 and 1.
 	int property_count;                  // Number of elements in the `properties` array.
 	cute_tiled_property_t* properties;   // Array of properties.
-	int transparentcolor;                // Hex-formatted color (#RRGGBB or #AARRGGBB) (optional).
-	int tintcolor;                       // Hex-formatted color (#RRGGBB or #AARRGGBB) (optional).
+	uint32_t transparentcolor;           // Hex-formatted color (#AARRGGBB) (optional).
+	uint32_t tintcolor;                  // Hex-formatted color (#AARRGGBB) (optional).
 	cute_tiled_string_t type;            // `tilelayer`, `objectgroup`, `imagelayer` or `group`.
 	cute_tiled_string_t image;           // An image filepath. Used if layer is type `imagelayer`.
 	int visible;                         // 0 or 1. Whether layer is shown or hidden in editor.
@@ -370,7 +370,7 @@ struct cute_tiled_tile_descriptor_t
 //    #include <cute_tiled.h>
 struct cute_tiled_tileset_t
 {
-	int backgroundcolor;                 // Hex-formatted color (#RRGGBB or #AARRGGBB) (optional).
+	uint32_t backgroundcolor;                 // Hex-formatted color (#AARRGGBB) (optional).
 	int columns;                         // The number of tile columns in the tileset.
 	int firstgid;                        // GID corresponding to the first tile in the set.
 	/* grid */                           // Not currently supported.
@@ -391,7 +391,7 @@ struct cute_tiled_tileset_t
 	int tileoffset_y;                    // Pixel offset to align tiles to the grid.
 	cute_tiled_tile_descriptor_t* tiles; // Linked list of tile descriptors. Can be NULL.
 	int tilewidth;                       // Maximum width of tiles in this set.
-	int transparentcolor;                // Hex-formatted color (#RRGGBB or #AARRGGBB) (optional).
+	uint32_t transparentcolor;                // Hex-formatted color (#RRGGBB or #AARRGGBB) (optional).
 	cute_tiled_string_t type;            // `tileset` (for tileset files, since 1.0).
 	cute_tiled_string_t source;          // Relative path to tileset, when saved externally from the map file.
 	cute_tiled_tileset_t* next;          // Pointer to next tileset. NULL if final tileset.
@@ -401,7 +401,7 @@ struct cute_tiled_tileset_t
 
 struct cute_tiled_map_t
 {
-	int backgroundcolor;                 // Hex-formatted color (#RRGGBB or #AARRGGBB) (optional).
+	uint32_t backgroundcolor;                 // Hex-formatted color (#RRGGBB or #AARRGGBB) (optional).
 	int height;                          // Number of tile rows.
 	/* hexsidelength */                  // Not currently supported.
 	int infinite;                        // Whether the map has infinite dimensions.
@@ -1293,6 +1293,7 @@ const char* cute_tiled_error_file = NULL; 	// The filepath of the file being par
 #endif
 
 #include <stdlib.h>
+#include <stdint.h> // uint32_t
 
 #if !defined(CUTE_TILED_STRTOLL)
 	#define CUTE_TILED_STRTOLL strtoll
@@ -1618,7 +1619,7 @@ cute_tiled_err:
 		CUTE_TILED_FAIL_IF(!cute_tiled_read_int_internal(m, num)); \
 	} while (0)
 
-static int cute_tiled_read_hex_int_internal(cute_tiled_map_internal_t* m, int* out)
+static int cute_tiled_read_hex_int(cute_tiled_map_internal_t* m, uint32_t* out)
 {
 	char* end;
 	unsigned long long int val;
@@ -1639,8 +1640,22 @@ static int cute_tiled_read_hex_int_internal(cute_tiled_map_internal_t* m, int* o
 
 	val = CUTE_TILED_STRTOULL(m->in, &end, 16);
 	CUTE_TILED_CHECK(m->in != end, "Invalid integer found during parse.");
+
+    // Count the length to determine if we need to force AARRGGBB, instead of RRGGBB.
+    int length = 0;
+    while (m->in != end) {
+        m->in++;
+        length++;
+    }
+    *out = (uint32_t)val;
+
+    // When less than 6 characters, force an alpha channel of 0xFF.
+    if (length <= 6) {
+        uint32_t alpha = 0xFF << 24;
+        *out = (*out & 0x00FFFFFF) | alpha;
+    }
+
 	m->in = end;
-	*out = (int)val;
 	return 1;
 
 cute_tiled_err:

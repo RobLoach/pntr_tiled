@@ -560,9 +560,15 @@ PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled
     PNTR_UNUSED(map);
     pntr_image* image = (pntr_image*)layer->image.ptr;
 
-    // TODO: Image layer: Support tint color from image layer... JSON output is either RGBA or RGB, but cute_tiled doesn't distinguish.
-    //pntr_color tintcolor = pntr_get_color(layer->tintcolor);
-    //printf("Color: %dx%dx%dx%d", tintcolor.r, tintcolor.g, tintcolor.b, tintcolor.a);
+    if (layer->tintcolor != 0) {
+        pntr_color tintcolor = pntr_new_color(
+            layer->tintcolor & 0xff,
+            (layer->tintcolor >> 8) & 0xff,
+            (layer->tintcolor >> 16) & 0xff,
+            (layer->tintcolor >> 24) & 0xff);
+        tint = pntr_color_alpha_blend(tint, tintcolor);
+        tint.a *= layer->opacity;
+    }
 
     // TODO: Image layer: Support repeatx and repeaty
 
