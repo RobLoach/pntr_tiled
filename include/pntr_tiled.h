@@ -8,6 +8,11 @@
 *       pntr https://github.com/robloach/pntr
 *       cute_tiled https://github.com/RandyGaul/cute_headers/blob/master/cute_tiled.h
 *
+*   DEVELOPER NOTES:
+*       There are a few cute_tiled_map_t properties that are used for pntr_tiled use:
+*       - tiledversion: Used for an array of pntr_image* subimages representing each tile source in the map.
+*       - nextlayerid: Used to track the current animation time in milliseconds.
+*
 *   LICENSE: zlib/libpng
 *
 *   pntr_tiled is licensed under an unmodified zlib/libpng license, which is an OSI-certified,
@@ -47,15 +52,57 @@ extern "C" {
     #define PNTR_TILED_API PNTR_API
 #endif
 
+/**
+ * Load a Tiled map that is exported as a JSON file.
+ *
+ * @param fileName The name of the file to load.
+ * @return The loaded map data, or NULL on failure.
+ */
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled(const char* fileName);
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_memory(const unsigned char *fileData, unsigned int dataSize, const char* baseDir);
 PNTR_TILED_API void pntr_unload_tiled(cute_tiled_map_t* map);
 PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int posX, int posY, pntr_color tint);
+
+/**
+ * Draw a tile from the map onto the provided image destination.
+ *
+ * @param dst The destination of where to draw the tile.
+ * @param map The map from which to get the tile.
+ * @param gid The global tile ID for the tile. When an animation is applied to the tile, it will get the tile for the active animation frame.
+ * @param posX The position to draw the tile along the X coordinate.
+ * @param posY The position to draw the tile along the Y coordinate.
+ * @param tint The color to tint the tile when drawing.
+ */
 PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map, int gid, int posX, int posY, pntr_color tint);
 PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 PNTR_TILED_API void pntr_draw_tiled_layer_tilelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
+
+/**
+ * Retrieves an image representing the desired tile from the given global tile ID.
+ *
+ * @param map The map to get the tile from.
+ * @param gid The global tile ID for the tile. This cannot exceed the number of tiles in the map.
+ *
+ * @return A subimage from the tileset for the given tile.
+ */
 PNTR_TILED_API pntr_image* pntr_get_tiled_tile(cute_tiled_map_t* map, int gid);
+
+/**
+ * Generate an image of the given Tiled map.
+ *
+ * @param map The map to build an image of.
+ * @param tint What color to tint the map.
+ * @return An image representing the rendered map, or NULL on failure.
+ */
 PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_color tint);
+
+/**
+ * Update the internal animation frame time counter for the map.
+ *
+ * @param map The map to update.
+ * @param deltaTime The amount of time that changed from the last update, in seconds.
+ */
+PNTR_TILED_API void pntr_update_tiled(cute_tiled_map_t* map, float deltaTime);
 
 #ifdef PNTR_ASSETSYS_API
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
@@ -156,6 +203,21 @@ extern "C" {
 #endif
 
 /**
+ * Internal pntr_tiled data for tiles within map tilesets.
+ *
+ * Will be saved into map->tiledversion, and managed internally.
+ *
+ * @private
+ * @internal
+ */
+typedef struct pntr_tiled_tile {
+    pntr_image image;
+    cute_tiled_tile_descriptor_t* descriptor;
+    int animationDuration;
+    cute_tiled_tileset_t* tileset;
+} pntr_tiled_tile;
+
+/**
  * Finds the last slash in the given path.
  *
  * @internal
@@ -193,15 +255,18 @@ void _pntr_tiled_path_basedir(char* path) {
 }
 
 /**
- * Prepare the internal tiles.
+ * Perform any internal loading of map data.
  *
  * @internal
  * @private
  */
-void _pntr_load_tiled_tiles(cute_tiled_map_t* map) {
+void _pntr_load_map_data(cute_tiled_map_t* map) {
     if (map == NULL) {
         return;
     }
+
+    // Prepare the animation counter.
+    map->nextlayerid = 0;
 
     // Count how many tiles there are
     int tileCount = 0;
@@ -212,7 +277,7 @@ void _pntr_load_tiled_tiles(cute_tiled_map_t* map) {
     }
 
     // Prepare the entire tiles set
-    pntr_image* tiles = pntr_load_memory(sizeof(pntr_image) * (size_t)tileCount);
+    pntr_tiled_tile* tiles = pntr_load_memory(sizeof(pntr_tiled_tile) * (size_t)tileCount);
 
     // Build all the tiles from each tileset.
     tileset = map->tilesets;
@@ -220,6 +285,10 @@ void _pntr_load_tiled_tiles(cute_tiled_map_t* map) {
         for (int i = 0; i < tileset->tilecount; i++) {
             // Calculate the gid.
             int gid = tileset->firstgid + i - 1;
+            pntr_tiled_tile* tile = tiles + gid;
+            tile->tileset = tileset;
+            tile->descriptor = NULL;
+            tile->animationDuration = 0;
 
             // Figure out where the tile appears in the tileset.
             int tileX = i % tileset->columns;
@@ -235,11 +304,28 @@ void _pntr_load_tiled_tiles(cute_tiled_map_t* map) {
 
             // Build the subimage as part of the tiles array.
             pntr_image* temporaryTile = pntr_image_subimage((pntr_image*)tileset->image.ptr, srcRect.x, srcRect.y, srcRect.width, srcRect.height);
-            pntr_memory_copy((void*)(tiles + gid), (void*)temporaryTile, sizeof(pntr_image));
-
-            // Don't need the temporary tile anymore.
+            pntr_image* tileImage = &tile->image;
+            pntr_memory_copy((void*)tileImage, (void*)temporaryTile, sizeof(pntr_image));
             pntr_unload_image(temporaryTile);
+
+            // Find any tile descriptors
+            cute_tiled_tile_descriptor_t* descriptor = tileset->tiles;
+            while (descriptor) {
+                // Find the descriptor for the active tile.
+                if (descriptor->tile_index == i) {
+                    tile->descriptor = descriptor;
+
+                    // Animation: Calculate how long the full animation is.
+                    for (int frameNumber = 0; frameNumber < tile->descriptor->frame_count; frameNumber++) {
+                        tile->animationDuration += tile->descriptor->animation[frameNumber].duration;
+                    }
+                    break;
+                }
+                descriptor = descriptor->next;
+            }
         }
+
+        // Onto the next tileset
         tileset = tileset->next;
     }
 
@@ -251,9 +337,33 @@ PNTR_TILED_API pntr_image* pntr_get_tiled_tile(cute_tiled_map_t* map, int gid) {
         return NULL;
     }
 
-    // Reference the internal gid'ed tiles.
-    pntr_image* tiles = (pntr_image*)map->tiledversion.ptr;
-    return tiles + gid - 1;
+    pntr_tiled_tile* tile = (pntr_tiled_tile*)map->tiledversion.ptr;
+    tile = tile + gid - 1;
+
+    // Process any descriptive tile properties.
+    if (tile->descriptor != NULL) {
+        // Animation
+        if (tile->descriptor->frame_count > 0) {
+            // Find the active frame.
+            int desiredMilliseconds = map->nextlayerid % tile->animationDuration;
+            int desiredFrame = 0;
+            int millisecondsCounter = 0;
+            for (int i = 0; i < tile->descriptor->frame_count; i++) {
+                millisecondsCounter += tile->descriptor->animation[i].duration;
+                if (millisecondsCounter < desiredMilliseconds) {
+                    break;
+                }
+                desiredFrame = i;
+            }
+
+            // Switch the tile to the animation frame.
+            gid = tile->tileset->firstgid + tile->descriptor->animation[desiredFrame].tileid;
+            tile = (pntr_tiled_tile*)map->tiledversion.ptr;
+            tile = tile + gid - 1;
+        }
+    }
+
+    return &tile->image;
 }
 
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled(const char* fileName) {
@@ -340,7 +450,7 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_memory(const unsigned char
     }
 
     // Load the individual tiles as subimages.
-    _pntr_load_tiled_tiles(map);
+    _pntr_load_map_data(map);
 
     return map;
 }
@@ -513,6 +623,16 @@ PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int 
     pntr_draw_tiled_layer(dst, map, map->layers, posX, posY, tint);
 }
 
+PNTR_TILED_API void pntr_update_tiled(cute_tiled_map_t* map, float deltaTime) {
+    // Update the animation counter
+    map->nextlayerid += (int)(deltaTime * 1000);
+
+    // Keep the counter from getting too big. 30 second animations seems long enough.
+    if (map->nextlayerid > 30000) {
+        map->nextlayerid -= 30000;
+    }
+}
+
 // pntr_assetsys integration
 #ifdef PNTR_ASSETSYS_API
 /**
@@ -589,7 +709,7 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, 
     }
 
     // Build the tile global IDs as subimages.
-    _pntr_load_tiled_tiles(map);
+    _pntr_load_map_data(map);
 
     return map;
 }

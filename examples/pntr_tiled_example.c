@@ -60,6 +60,9 @@ bool Update(pntr_app* app, pntr_image* screen) {
         appData->y = -appData->map->height * appData->map->tileheight + screen->height;
     }
 
+    // Update any map data.
+    pntr_update_tiled(appData->map, pntr_app_delta_time(app));
+
     // Clear the screen
     pntr_clear_background(screen, PNTR_BLACK);
 
