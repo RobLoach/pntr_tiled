@@ -569,6 +569,28 @@ PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled
     pntr_draw_image_tint(dst, image, posX, posY, tint);
 }
 
+PNTR_TILED_API void pntr_draw_tiled_object(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_object_t* object, int posX, int posY, pntr_color tint) {
+    if (object == NULL || dst == NULL || map == NULL) {
+        return;
+    }
+
+    if (object->gid != 0) {
+        pntr_draw_tiled_tile(dst, map, object->gid, posX, posY, tint);
+    }
+}
+
+PNTR_TILED_API void pntr_draw_tiled_layer_objectgroup(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
+    cute_tiled_object_t* object = layer->objects;
+    while (object) {
+        #ifndef PNTR_DRAW_TILED_OBJECT
+        #define PNTR_DRAW_TILED_OBJECT pntr_draw_tiled_object
+        #endif
+        PNTR_DRAW_TILED_OBJECT(dst, map, object, posX + object->x, posY + object->y - object->height, tint);
+
+        object = object->next;
+    }
+}
+
 PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
     if (dst == NULL || map == NULL || layer == NULL || tint.a == 0) {
         return;
@@ -591,8 +613,7 @@ PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map
                     pntr_draw_tiled_layer(dst, map, layer->layers, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
                 break;
                 case 'o': // "objectgroup"
-                    // TODO: Draw the objects?
-                    //DrawMapLayerObjects(layer->objects, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
+                    pntr_draw_tiled_layer_objectgroup(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
                 break;
                 case 'i': // "imagelayer"
                     pntr_draw_tiled_layer_imagelayer(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);

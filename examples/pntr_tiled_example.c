@@ -1,3 +1,4 @@
+#define PNTR_ENABLE_DEFAULT_FONT
 #define PNTR_APP_IMPLEMENTATION
 #include "pntr_app.h"
 
