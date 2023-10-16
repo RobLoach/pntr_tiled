@@ -620,6 +620,10 @@ PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_colo
 }
 
 PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int posX, int posY, pntr_color tint) {
+    if (map == NULL) {
+        return;
+    }
+
     pntr_draw_tiled_layer(dst, map, map->layers, posX, posY, tint);
 }
 
@@ -633,87 +637,12 @@ PNTR_TILED_API void pntr_update_tiled(cute_tiled_map_t* map, float deltaTime) {
     }
 }
 
-// pntr_assetsys integration
-#ifdef PNTR_ASSETSYS_API
 /**
- * Load the given cute_tiled_string_t image as a pntr_image.
- *
- * @internal
- * @private
+ * Integrations
  */
-void _pntr_load_tiled_assetsys_string_texture(assetsys_t* sys, cute_tiled_string_t* image, const char* baseDir) {
-    if (sys == NULL || image == NULL || image->ptr == NULL) {
-        return;
-    }
-
-    char fullPath[PNTR_PATH_MAX];
-    fullPath[0] = '\0';
-    PNTR_STRCAT(fullPath, baseDir);
-    PNTR_STRCAT(fullPath, image->ptr);
-
-    image->ptr = (const char*)pntr_load_image_from_assetsys(sys, fullPath);
-    if (image->ptr == NULL) {
-        printf("pntr_tiled: Failed to load image from assetsys: %s", fullPath);
-    }
-}
-
-void _pntr_load_tiled_layer_images_from_assetsys(assetsys_t* sys, cute_tiled_layer_t* layer, const char* baseDir) {
-    if (layer == NULL || sys == NULL) {
-        return;
-    }
-
-    if (PNTR_STRCMP(layer->type.ptr, "imagelayer") == 0) {
-        _pntr_load_tiled_assetsys_string_texture(sys, &layer->image, baseDir);
-    }
-    else if (PNTR_STRCMP(layer->type.ptr, "group") == 0) {
-        cute_tiled_layer_t* childLayers = layer->layers;
-        while (childLayers) {
-            _pntr_load_tiled_layer_images_from_assetsys(sys, childLayers, baseDir);
-            childLayers = childLayers->next;
-        }
-    }
-}
-
-PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName) {
-    unsigned int size;
-    unsigned char* data = pntr_load_file_from_assetsys(sys, fileName, &size);
-    if (data == NULL) {
-        return NULL;
-    }
-
-    cute_tiled_map_t* map = cute_tiled_load_map_from_memory(data, (int)size, 0);
-    pntr_unload_memory(data);
-    if (map == NULL) {
-        return NULL;
-    }
-
-    // Copy the fileName, along with its null terminator to find the basePath.
-    char baseDir[PNTR_PATH_MAX];
-    size_t fileNameLength = PNTR_STRLEN(fileName);
-    pntr_memory_copy((void*)baseDir, (void*)fileName, fileNameLength);
-    baseDir[fileNameLength] = '\0';
-    _pntr_tiled_path_basedir(baseDir);
-
-    // Tilesets
-    cute_tiled_tileset_t* tileset = map->tilesets;
-    while (tileset) {
-        _pntr_load_tiled_assetsys_string_texture(sys, &tileset->image, baseDir);
-        tileset = tileset->next;
-    }
-
-    // Load all image layers.
-    cute_tiled_layer_t* layer = map->layers;
-    while (layer) {
-        _pntr_load_tiled_layer_images_from_assetsys(sys, layer, baseDir);
-        layer = layer->next;
-    }
-
-    // Build the tile global IDs as subimages.
-    _pntr_load_map_data(map);
-
-    return map;
-}
-#endif  // PNTR_ASSETSYS_API
+#ifdef PNTR_ASSETSYS_API
+    #include "pntr_tiled_assetsys.h"
+#endif
 
 #ifdef __cplusplus
 }

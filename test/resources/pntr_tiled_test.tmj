@@ -70,7 +70,7 @@
          "image":"logo.png",
          "name":"Image Layer",
          "offsetx":148,
-         "offsety":191.333333333333,
+         "offsety":191.333,
          "opacity":0.7,
          "type":"imagelayer",
          "visible":true,
