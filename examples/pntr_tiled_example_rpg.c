@@ -99,8 +99,20 @@ pntr_rectangle get_tile_rec(int id, pntr_image* src) {
   return r;
 }
 
-bool collision_check(pntr_rectangle a, pntr_rectangle b) {
-  return abs(a.x - b.x) < a.width && abs(a.y - b.y) < a.height;
+bool collision_check(AppData* appData, pntr_vector pos) {
+  cute_tiled_object_t* o = appData->layer_collisions->objects;
+
+  while (o) {
+    // print_objects(o);
+    bool collision = abs((int)o->x - (int)pos.x) < (int)o->width && abs((int)o->y - (int)pos.y + 16) < (int)o->height;
+    if (collision) {
+      return true;
+    }
+    o = o->next;
+  }
+
+  return false;
+  // return 
 }
 
 // this will update/draw all the map-objects, including player, based on state of things
@@ -179,26 +191,40 @@ bool Update(pntr_app* app, pntr_image* screen) {
   pntr_clear_background(appData->objects, PNTR_BLANK);
   update_map_objects(appData);
 
+  pntr_vector pos = {.x=appData->playerX, .y=appData->playerY};
+
   // Keyboard/Gamepad
   bool anyDirectionKey = false;
   if (pntr_app_key_down(app, PNTR_APP_KEY_LEFT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_LEFT)) {
-    appData->playerX -= appData->speed * pntr_app_delta_time(app);
+    pos.x -= appData->speed * pntr_app_delta_time(app);
+    if (!collision_check(appData, pos)) {
+      appData->playerX = pos.x;
+    }
     anyDirectionKey = true;
     appData->playerDirection = FACE_WEST;
   }
   else if (pntr_app_key_down(app, PNTR_APP_KEY_RIGHT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_RIGHT)) {
-    appData->playerX += appData->speed * pntr_app_delta_time(app);
+    pos.x += appData->speed * pntr_app_delta_time(app);
+    if (!collision_check(appData, pos)) {
+      appData->playerX = pos.x;
+    }
     anyDirectionKey = true;
     appData->playerDirection = FACE_EAST;
   }
 
   if (pntr_app_key_down(app, PNTR_APP_KEY_UP) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_UP)) {
-    appData->playerY -= appData->speed * pntr_app_delta_time(app);
+    pos.y -= appData->speed * pntr_app_delta_time(app);
+    if (!collision_check(appData, pos)) {
+      appData->playerY = pos.y;
+    }
     anyDirectionKey = true;
     appData->playerDirection = FACE_NORTH;
   }
   else if (pntr_app_key_down(app, PNTR_APP_KEY_DOWN) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_DOWN)) {
-    appData->playerY += appData->speed * pntr_app_delta_time(app);
+    pos.y += appData->speed * pntr_app_delta_time(app);
+    if (!collision_check(appData, pos)) {
+      appData->playerY = pos.y;
+    }
     anyDirectionKey = true;
     appData->playerDirection = FACE_SOUTH;
   }
