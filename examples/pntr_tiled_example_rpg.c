@@ -41,6 +41,9 @@ typedef struct AppData {
     int playerX, playerY;
 
     float gameTime;
+
+    cute_tiled_layer_t* layer_objects;
+    cute_tiled_layer_t* layer_collisions;
 } AppData;
 
 // unload current map and switch to another one
@@ -58,6 +61,35 @@ void map_portal(char* name, AppData* appData) {
     char fname[80];
     sprintf(fname, "resources/rpg/%s.tmj", name);
     appData->map = pntr_load_tiled(fname);
+
+    // find layers for logic-object/collision
+    appData->layer_objects = NULL;
+    appData->layer_collisions = NULL;
+
+    cute_tiled_layer_t* layer = appData->map->layers;
+    while(layer) {
+        if (strcmp(layer->name.ptr, "collision") == 0) {
+            appData->layer_collisions = layer;
+        } else if (strcmp(layer->name.ptr, "logic") == 0) {
+            appData->layer_objects = layer;
+
+            // find player and set intial position/direction
+            cute_tiled_object_t* o = layer->objects;
+            while (o) {
+                if (strcmp(o->type.ptr, "player") == 0) {
+                    appData->playerX = (int) o->x;
+                    appData->playerY = (int) o->y;
+                    appData->playerDirection = o->gid/3;
+                    break;
+                }
+                o = o->next;
+            }
+        }
+        if (appData->layer_objects != NULL && appData->layer_collisions != NULL) {
+            break;
+        }
+        layer = layer->next;
+    }
 }
 
 // given a tile-number (0-indexed) return rec of image
@@ -71,71 +103,30 @@ bool collision_check(pntr_rectangle a, pntr_rectangle b) {
     return abs(a.x - b.x) < a.width && abs(a.y - b.y) < a.height;
 }
 
-
 // this will update/draw all the map-objects, including player, based on state of things
 void update_map_objects(AppData* appData) {
-    // TODO: check keys to update "wants to move" (to change sprite-facing direction, check collisions, etc)
+    if (appData->layer_objects != NULL) {
+        cute_tiled_object_t* o = appData->layer_objects->objects;
+        while (o) {
+            if (strcmp(o->type.ptr, "player") == 0) {
+                // handle walking animation
+                int frame = 0;
 
-    cute_tiled_layer_t* layer = appData->map->layers;
-
-    while(layer) {
-        // printf("LAYER: %s\n", layer->name.ptr);
-
-        // this is the layer where I keep collision-shapes (to block where the player/enemies can go)
-        // this could also be done with proper Tiled collision-stuff, this is just how I set it up
-        if (strcmp(layer->name.ptr, "collision") == 0) {
-            // TODO: check collisions
-        }
-
-        // this is the layer where I keep object-pointers that determine game-logic
-        if (strcmp(layer->name.ptr, "logic") == 0) {
-            cute_tiled_object_t* o = layer->objects;
-            while (o) {
-                int gid = o->gid;
-
-                // these are the tile-space coordinates
-                int tileX = (int) (o->x/16.0);
-                int tileY = (int) (o->y/16.0);
-
-                // these are the image coordinates
-                int posX = (int) o->x;
-                int posY = (int) o->y;
-
-                // printf("  OBJECT (%dx%d) - %d: %s (%s)\n", tileX, tileY, gid, o->name.ptr, o->type.ptr);
-
-                // draw the representative tile
-                if (gid) {
-                    // gid represents player
-                    if (gid < 13) {
-                        // set player position if it has not been set (for initial state)
-                        if (appData->playerX == 0 && appData->playerY == 0) {
-                            appData->playerX = posX;
-                            appData->playerY = posY;
-                            appData->playerDirection = gid/3;
-                        }
-                        
-                        // handle walking animation
-                        int frame = 0;
-
-                        if (appData->playerWalking) {
-                            frame = ((int)(appData->gameTime * appData->speed/30) % 2) + 1;
-                        }
-
-                        // draw player
-                        pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec((appData->playerDirection * 3) + frame, appData->sprites), appData->playerX, appData->playerY-16);
-                    }
-                    // generic: draw whatever tile
-                    else {
-                        pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec(gid-1, appData->sprites), posX, posY-16);
-                    }
+                if (appData->playerWalking) {
+                    frame = ((int)(appData->gameTime * appData->speed/30) % 2) + 1;
                 }
 
-
-
-                o = o->next;
+                // draw player
+                pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec((appData->playerDirection * 3) + frame, appData->sprites), appData->playerX, appData->playerY-16);
             }
+
+            else {
+                // generic: draw whatever tile
+                pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec(o->gid-1, appData->sprites), (int) o->x, (int) o->y-16);
+            }
+
+            o = o->next;
         }
-        layer = layer->next;
     }
 }
 
