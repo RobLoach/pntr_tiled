@@ -52,15 +52,56 @@ extern "C" {
     #define PNTR_TILED_API PNTR_API
 #endif
 
+/**
+ * Load a Tiled map that is exported as a JSON file.
+ *
+ * @param fileName The name of the file to load.
+ * @return The loaded map data, or NULL on failure.
+ */
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled(const char* fileName);
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_memory(const unsigned char *fileData, unsigned int dataSize, const char* baseDir);
 PNTR_TILED_API void pntr_unload_tiled(cute_tiled_map_t* map);
 PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int posX, int posY, pntr_color tint);
+
+/**
+ * Draw a tile from the map onto the provided image destination.
+ *
+ * @param dst The destination of where to draw the tile.
+ * @param map The map from which to get the tile.
+ * @param gid The global tile ID for the tile. When an animation is applied to the tile, it will get the tile for the active animation frame.
+ * @param posX The position to draw the tile along the X coordinate.
+ * @param posY The position to draw the tile along the Y coordinate.
+ * @param tint The color to tint the tile when drawing.
+ */
 PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map, int gid, int posX, int posY, pntr_color tint);
 PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 PNTR_TILED_API void pntr_draw_tiled_layer_tilelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
+
+/**
+ * Retrieves an image representing the desired tile from the given global tile ID.
+ *
+ * @param map The map to get the tile from.
+ * @param gid The global tile ID for the tile. This cannot exceed the number of tiles in the map.
+ *
+ * @return A subimage from the tileset for the given tile.
+ */
 PNTR_TILED_API pntr_image* pntr_get_tiled_tile(cute_tiled_map_t* map, int gid);
+
+/**
+ * Generate an image of the given Tiled map.
+ *
+ * @param map The map to build an image of.
+ * @param tint What color to tint the map.
+ * @return An image representing the rendered map, or NULL on failure.
+ */
 PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_color tint);
+
+/**
+ * Update the internal animation frame time counter for the map.
+ *
+ * @param map The map to update.
+ * @param deltaTime The amount of time that changed from the last update, in seconds.
+ */
 PNTR_TILED_API void pntr_update_tiled(cute_tiled_map_t* map, float deltaTime);
 
 #ifdef PNTR_ASSETSYS_API
@@ -161,6 +202,14 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, 
 extern "C" {
 #endif
 
+/**
+ * Internal pntr_tiled data for tiles within map tilesets.
+ *
+ * Will be saved into map->tiledversion, and managed internally.
+ *
+ * @private
+ * @internal
+ */
 typedef struct pntr_tiled_tile {
     pntr_image image;
     cute_tiled_tile_descriptor_t* descriptor;
@@ -575,10 +624,10 @@ PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int 
 }
 
 PNTR_TILED_API void pntr_update_tiled(cute_tiled_map_t* map, float deltaTime) {
-    // Animation counter
+    // Update the animation counter
     map->nextlayerid += (int)(deltaTime * 1000);
 
-    // Keep the counter from getting too big.
+    // Keep the counter from getting too big. 30 second animations seems long enough.
     if (map->nextlayerid > 30000) {
         map->nextlayerid -= 30000;
     }
