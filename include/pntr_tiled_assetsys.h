@@ -116,6 +116,9 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, 
     cute_tiled_tileset_t* tileset = map->tilesets;
     while (tileset) {
         _pntr_load_tiled_assetsys_string_texture(sys, &tileset->image, baseDir);
+        if (tileset->transparentcolor != 0) {
+            pntr_image_color_replace((pntr_image*)tileset->image.ptr, _pntr_get_tiled_color(tileset->transparentcolor), PNTR_BLANK);
+        }
         tileset = tileset->next;
     }
 
