@@ -283,7 +283,7 @@ bool Update(pntr_app* app, pntr_image* screen) {
     }
   }
 
-  // pntr_update_tiled(appData->map, pntr_app_delta_time(app));
+  pntr_update_tiled(appData->map, pntr_app_delta_time(app));
 
   return true;
 }
