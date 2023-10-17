@@ -152,6 +152,11 @@ bool world_collision_check(AppData* appData, pntr_rectangle playerHitZone) {
 void update_map_objects(AppData* appData) {
   if (appData->layer_objects != NULL) {
     cute_tiled_object_t* o = appData->layer_objects->objects;
+    pntr_rectangle orect = { .x=0, .y=0, .width=16*3, .height=16*3 };
+    pntr_rectangle playerHitZone = { .x=appData->playerX + 4, .y=appData->playerY-4, .height=4, .width=8 };
+    bool collision = false;
+    appData->activatableObject = NULL;
+
     while (o) {
       if (strcmp(o->type.ptr, "player") == 0) {
         // handle walking animation
@@ -166,9 +171,22 @@ void update_map_objects(AppData* appData) {
       }
 
       else {
-        // TODO: check neighboring collision
-        appData->activatableObject = o;
+        orect.x = o->x - 16;
+        orect.y = o->y - 32;
 
+        collision = collision_check(playerHitZone, orect);
+
+        if (DEBUG_COLLISION){
+          if (collision) {
+            pntr_draw_rectangle_fill_rec(appData->objects, orect, PNTR_GREEN);
+          } else {
+            pntr_draw_rectangle_fill_rec(appData->objects, orect, PNTR_YELLOW);
+          }
+        }
+
+        if (collision) {
+          appData->activatableObject = o;
+        }
 
         // generic: draw whatever tile
         pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec(o->gid-1, appData->sprites), (int) o->x, (int) o->y-16);
