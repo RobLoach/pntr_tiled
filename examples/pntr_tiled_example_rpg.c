@@ -7,7 +7,7 @@
 // just some lil utils to see what is in map
 #include "debug_map.h"
 
-#define DEBUG_COLLISION 0
+#define DEBUG_COLLISION 1
 
 typedef enum FaceDirection {
   FACE_SOUTH,
@@ -59,6 +59,8 @@ void map_portal(char* name, AppData* appData) {
   appData->x = 0;
   appData->y = 0;
   appData->sign_text = NULL;
+
+  appData->activatableObject = NULL;
 
   pntr_unload_tiled(appData->map);
 
@@ -157,19 +159,12 @@ void update_map_objects(AppData* appData) {
     pntr_rectangle orect = { .x=0, .y=0, .width=16*3, .height=16*3 };
     pntr_rectangle playerHitZone = { .x=appData->playerX + 4, .y=appData->playerY-4, .height=4, .width=8 };
     bool collision = false;
+
     appData->activatableObject = NULL;
 
     while (o) {
       if (strcmp(o->type.ptr, "player") == 0) {
-        // handle walking animation
-        int frame = 0;
-
-        if (appData->playerWalking) {
-          frame = ((int)(appData->gameTime * appData->speed/30) % 2) + 1;
-        }
-
-        // draw player
-        pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec((appData->playerDirection * 3) + frame, appData->sprites), appData->playerX, appData->playerY-16);
+        // draw moved to after all rest
       }
 
       else {
@@ -199,12 +194,21 @@ void update_map_objects(AppData* appData) {
   }
 }
 
+// called on activation
+void activate_current(AppData* appData){
+  if (appData->activatableObject!=NULL) {
+    printf("ACTION: %s (%s)\n", appData->activatableObject->name.ptr, appData->activatableObject->type.ptr);
+    if (strcmp(appData->activatableObject->type.ptr, "portal") == 0) {
+      map_portal(appData->activatableObject->name.ptr, appData);
+    }
+  }
+}
 
 bool Init(pntr_app* app) {
   AppData* appData = pntr_load_memory(sizeof(AppData));
   pntr_app_set_userdata(app, appData);
 
-  appData->speed = 200;
+  appData->speed = 100;
 
   map_portal("welcome", appData);
 
@@ -247,6 +251,16 @@ bool Update(pntr_app* app, pntr_image* screen) {
   // update all map objects
   pntr_clear_background(appData->objects, PNTR_BLANK);
   update_map_objects(appData);
+
+  // handle walking animation
+  int frame = 0;
+
+  if (appData->playerWalking) {
+    frame = ((int)(appData->gameTime * appData->speed/30) % 2) + 1;
+  }
+
+  // draw player
+  pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec((appData->playerDirection * 3) + frame, appData->sprites), appData->playerX, appData->playerY-16);
 
   pntr_rectangle playerHitZone = { .x=appData->playerX + 4, .y=appData->playerY-4, .height=4, .width=8 };
 
@@ -294,11 +308,19 @@ bool Update(pntr_app* app, pntr_image* screen) {
   // draw all map objects
   pntr_draw_image(screen, appData->objects, appData->x, appData->y);
 
-  // check for action button
-  if (appData->activatableObject != NULL && (pntr_app_key_pressed(app, PNTR_APP_KEY_X) || pntr_app_gamepad_button_pressed(app, 0, PNTR_APP_GAMEPAD_BUTTON_A))) {
-    printf("ACTION: %s (%s)\n", appData->activatableObject->name.ptr, appData->activatableObject->type.ptr);
-    if (strcmp(appData->activatableObject->type.ptr, "portal") == 0) {
-        map_portal(appData->activatableObject->name.ptr, appData);
+  // handle player activation
+  if (appData->activatableObject != NULL) {
+    // check for action button
+    if (pntr_app_key_pressed(app, PNTR_APP_KEY_X) || pntr_app_gamepad_button_pressed(app, 0, PNTR_APP_GAMEPAD_BUTTON_A)) {
+      activate_current(appData);
+    } else {
+      for (int i = 0; i < appData->activatableObject->property_count; ++i) {
+        cute_tiled_property_t* p = appData->activatableObject->properties + i;
+        if (strcmp(p->name.ptr, "touch") == 0 && p->data.boolean) {
+          activate_current(appData);
+          break;
+        }
+      }
     }
   }
 

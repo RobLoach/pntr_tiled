@@ -291,7 +291,7 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":148,
+                 "width":352,
                  "x":224,
                  "y":192
                 }, 
@@ -318,26 +318,48 @@
                  "y":528
                 }, 
                 {
-                 "height":16,
-                 "id":18,
+                 "height":8,
+                 "id":25,
                  "name":"",
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":164,
-                 "x":412,
-                 "y":192
+                 "width":10,
+                 "x":259,
+                 "y":324
                 }, 
                 {
-                 "height":16,
-                 "id":19,
+                 "height":3,
+                 "id":26,
                  "name":"",
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":48,
-                 "x":368,
-                 "y":176
+                 "width":4,
+                 "x":262,
+                 "y":333
+                }, 
+                {
+                 "height":4,
+                 "id":27,
+                 "name":"",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":8,
+                 "x":356,
+                 "y":396
+                }, 
+                {
+                 "height":4,
+                 "id":28,
+                 "name":"",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":8,
+                 "x":420,
+                 "y":396
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -421,6 +443,12 @@
                  "height":16,
                  "id":7,
                  "name":"U4",
+                 "properties":[
+                        {
+                         "name":"touch",
+                         "type":"bool",
+                         "value":true
+                        }],
                  "rotation":0,
                  "type":"portal",
                  "visible":true,
@@ -433,6 +461,12 @@
                  "height":16,
                  "id":17,
                  "name":"U1",
+                 "properties":[
+                        {
+                         "name":"touch",
+                         "type":"bool",
+                         "value":true
+                        }],
                  "rotation":0,
                  "type":"portal",
                  "visible":true,
@@ -447,7 +481,7 @@
          "y":0
         }],
  "nextlayerid":7,
- "nextobjectid":21,
+ "nextobjectid":29,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.10.2",
