@@ -20,4 +20,5 @@ target_link_libraries(pntr_tiled_test PUBLIC
 set_property(TARGET pntr_tiled_test PROPERTY C_STANDARD 11)
 
 # Set up the test
+list(APPEND CMAKE_CTEST_ARGUMENTS "--output-on-failure")
 add_test(NAME pntr_tiled_test COMMAND pntr_tiled_test)
