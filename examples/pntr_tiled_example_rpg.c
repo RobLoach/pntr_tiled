@@ -45,6 +45,9 @@ typedef struct AppData {
 
   cute_tiled_layer_t* layer_objects;
   cute_tiled_layer_t* layer_collisions;
+
+  // the current object the player could activate
+  cute_tiled_object_t* activatableObject;
 } AppData;
 
 // unload current map and switch to another one
@@ -113,11 +116,6 @@ bool collision_check(pntr_rectangle a, pntr_rectangle b) {
   return collision;
 }
 
-// try to figure out what action the player is applying (based on obejcts)
-cute_tiled_object_t* get_action_target(AppData* appData, pntr_rectangle playerHitZone) {
-  return NULL;
-}
-
 // check player collision of all collision objects
 bool world_collision_check(AppData* appData, pntr_rectangle playerHitZone) {
   cute_tiled_object_t* o = appData->layer_collisions->objects;
@@ -168,6 +166,10 @@ void update_map_objects(AppData* appData) {
       }
 
       else {
+        // TODO: check neighboring collision
+        appData->activatableObject = o;
+
+
         // generic: draw whatever tile
         pntr_draw_image_rec(appData->objects, appData->sprites, get_tile_rec(o->gid-1, appData->sprites), (int) o->x, (int) o->y-16);
       }
@@ -273,14 +275,8 @@ bool Update(pntr_app* app, pntr_image* screen) {
   pntr_draw_image(screen, appData->objects, appData->x, appData->y);
 
   // check for action button
-  if (pntr_app_key_down(app, PNTR_APP_KEY_X) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_A)) {
-    playerHitZone.x = appData->playerX;
-    playerHitZone.y = appData->playerY;
-
-    cute_tiled_object_t* inFrontOf = get_action_target(appData, playerHitZone);
-    if (inFrontOf != NULL) {
-      printf("ACTION: %s (%s)\n", inFrontOf->name.ptr, inFrontOf->type.ptr);
-    }
+  if (appData->activatableObject != NULL && (pntr_app_key_down(app, PNTR_APP_KEY_X) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_A))) {
+    printf("ACTION: %s (%s)\n", appData->activatableObject->name.ptr, appData->activatableObject->type.ptr);
   }
 
   pntr_update_tiled(appData->map, pntr_app_delta_time(app));
