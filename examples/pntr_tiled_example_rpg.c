@@ -7,14 +7,14 @@
 // just some lil utils to see what is in map
 #include "debug_map.h"
 
+#define DEBUG_COLLISION 0
+
 typedef enum FaceDirection {
   FACE_SOUTH,
   FACE_NORTH,
   FACE_EAST,
   FACE_WEST
 } FaceDirection;
-
-#define DEBUG_COLLISION 1
 
 typedef struct AppData {
   struct nk_context* ctx;
@@ -61,6 +61,8 @@ void map_portal(char* name, AppData* appData) {
   appData->sign_text = NULL;
 
   pntr_unload_tiled(appData->map);
+
+  appData->activatableObject = NULL;
 
   char fname[80];
   sprintf(fname, "resources/rpg/%s.tmj", name);
@@ -293,8 +295,11 @@ bool Update(pntr_app* app, pntr_image* screen) {
   pntr_draw_image(screen, appData->objects, appData->x, appData->y);
 
   // check for action button
-  if (appData->activatableObject != NULL && (pntr_app_key_down(app, PNTR_APP_KEY_X) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_A))) {
+  if (appData->activatableObject != NULL && (pntr_app_key_pressed(app, PNTR_APP_KEY_X) || pntr_app_gamepad_button_pressed(app, 0, PNTR_APP_GAMEPAD_BUTTON_A))) {
     printf("ACTION: %s (%s)\n", appData->activatableObject->name.ptr, appData->activatableObject->type.ptr);
+    if (strcmp(appData->activatableObject->type.ptr, "portal") == 0) {
+        map_portal(appData->activatableObject->name.ptr, appData);
+    }
   }
 
   pntr_update_tiled(appData->map, pntr_app_delta_time(app));
