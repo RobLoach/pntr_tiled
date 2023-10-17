@@ -113,6 +113,11 @@ bool collision_check(pntr_rectangle a, pntr_rectangle b) {
   return collision;
 }
 
+// try to figure out what action the player is applying (based on obejcts)
+cute_tiled_object_t* get_action_target(AppData* appData, pntr_rectangle playerHitZone) {
+  return NULL;
+}
+
 // check player collision of all collision objects
 bool world_collision_check(AppData* appData, pntr_rectangle playerHitZone) {
   cute_tiled_object_t* o = appData->layer_collisions->objects;
@@ -267,7 +272,18 @@ bool Update(pntr_app* app, pntr_image* screen) {
   // draw all map objects
   pntr_draw_image(screen, appData->objects, appData->x, appData->y);
 
-  // TODO: handle keys to update playerX/playerY
+  // check for action button
+  if (pntr_app_key_down(app, PNTR_APP_KEY_X) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_A)) {
+    playerHitZone.x = appData->playerX;
+    playerHitZone.y = appData->playerY;
+
+    cute_tiled_object_t* inFrontOf = get_action_target(appData, playerHitZone);
+    if (inFrontOf != NULL) {
+      printf("ACTION: %s (%s)\n", inFrontOf->name.ptr, inFrontOf->type.ptr);
+    }
+  }
+
+  // pntr_update_tiled(appData->map, pntr_app_delta_time(app));
 
   return true;
 }
