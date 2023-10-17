@@ -14,6 +14,7 @@ typedef enum FaceDirection {
   FACE_WEST
 } FaceDirection;
 
+#define DEBUG_COLLISION 1
 
 typedef struct AppData {
   struct nk_context* ctx;
@@ -99,12 +100,29 @@ pntr_rectangle get_tile_rec(int id, pntr_image* src) {
   return r;
 }
 
-bool collision_check(AppData* appData, pntr_vector pos) {
+// check player collision of all collision objects
+bool collision_check(AppData* appData, pntr_rectangle playerHitZone) {
   cute_tiled_object_t* o = appData->layer_collisions->objects;
+
+  pntr_rectangle orect = { .x=0, .y=0, .width=0, .height=0 };
 
   while (o) {
     // print_objects(o);
-    bool collision = abs((int)o->x - (int)pos.x) < (int)o->width && abs((int)o->y - (int)pos.y + 16) < (int)o->height;
+    bool collision = abs((int)o->x - playerHitZone.x) < o->width && abs((int)o->y - playerHitZone.y + 16) < o->height;
+
+    if (DEBUG_COLLISION){
+      orect.x = o->x;
+      orect.y = o->y;
+      orect.width = o->width;
+      orect.height = o->height;
+
+      if (collision) {
+        pntr_draw_rectangle_fill_rec(appData->objects, orect, PNTR_PINK);
+      }else{
+        pntr_draw_rectangle_fill_rec(appData->objects, orect, PNTR_BLUE);
+      }
+    }
+
     if (collision) {
       return true;
     }
@@ -112,7 +130,6 @@ bool collision_check(AppData* appData, pntr_vector pos) {
   }
 
   return false;
-  // return 
 }
 
 // this will update/draw all the map-objects, including player, based on state of things
@@ -191,39 +208,43 @@ bool Update(pntr_app* app, pntr_image* screen) {
   pntr_clear_background(appData->objects, PNTR_BLANK);
   update_map_objects(appData);
 
-  pntr_vector pos = {.x=appData->playerX, .y=appData->playerY};
+  pntr_rectangle playerHitZone = { .x=appData->playerX + 4, .y=appData->playerY-4, .height=4, .width=8 };
+
+  if (DEBUG_COLLISION) {
+    pntr_draw_rectangle_fill_rec(appData->objects, playerHitZone, PNTR_RED);
+  }
 
   // Keyboard/Gamepad
   bool anyDirectionKey = false;
   if (pntr_app_key_down(app, PNTR_APP_KEY_LEFT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_LEFT)) {
-    pos.x -= appData->speed * pntr_app_delta_time(app);
-    if (!collision_check(appData, pos)) {
-      appData->playerX = pos.x;
+    playerHitZone.x -= appData->speed * pntr_app_delta_time(app);
+    if (!collision_check(appData, playerHitZone)) {
+      appData->playerX = playerHitZone.x - 4;
     }
     anyDirectionKey = true;
     appData->playerDirection = FACE_WEST;
   }
   else if (pntr_app_key_down(app, PNTR_APP_KEY_RIGHT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_RIGHT)) {
-    pos.x += appData->speed * pntr_app_delta_time(app);
-    if (!collision_check(appData, pos)) {
-      appData->playerX = pos.x;
+    playerHitZone.x += appData->speed * pntr_app_delta_time(app);
+    if (!collision_check(appData, playerHitZone)) {
+      appData->playerX = playerHitZone.x - 4;
     }
     anyDirectionKey = true;
     appData->playerDirection = FACE_EAST;
   }
 
   if (pntr_app_key_down(app, PNTR_APP_KEY_UP) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_UP)) {
-    pos.y -= appData->speed * pntr_app_delta_time(app);
-    if (!collision_check(appData, pos)) {
-      appData->playerY = pos.y;
+    playerHitZone.y -= appData->speed * pntr_app_delta_time(app);
+    if (!collision_check(appData, playerHitZone)) {
+      appData->playerY = playerHitZone.y + 4;
     }
     anyDirectionKey = true;
     appData->playerDirection = FACE_NORTH;
   }
   else if (pntr_app_key_down(app, PNTR_APP_KEY_DOWN) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_DOWN)) {
-    pos.y += appData->speed * pntr_app_delta_time(app);
-    if (!collision_check(appData, pos)) {
-      appData->playerY = pos.y;
+    playerHitZone.y += appData->speed * pntr_app_delta_time(app);
+    if (!collision_check(appData, playerHitZone)) {
+      appData->playerY = playerHitZone.y + 4;
     }
     anyDirectionKey = true;
     appData->playerDirection = FACE_SOUTH;
