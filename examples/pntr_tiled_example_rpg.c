@@ -100,25 +100,38 @@ pntr_rectangle get_tile_rec(int id, pntr_image* src) {
   return r;
 }
 
+// check if 2 rectangles are colliding
+bool collision_check(pntr_rectangle a, pntr_rectangle b) {
+  bool collision = false;
+  do {
+    if (a.y > (b.y + b.height)) break;
+    if (b.y > (a.y + a.height)) break;
+    if (a.x > (b.x + b.width)) break;
+    if (b.x > (a.x + a.width)) break;
+    collision = true;
+  } while (false);
+  return collision;
+}
+
 // check player collision of all collision objects
-bool collision_check(AppData* appData, pntr_rectangle playerHitZone) {
+bool world_collision_check(AppData* appData, pntr_rectangle playerHitZone) {
   cute_tiled_object_t* o = appData->layer_collisions->objects;
 
   pntr_rectangle orect = { .x=0, .y=0, .width=0, .height=0 };
+  bool collision = false;
 
   while (o) {
-    // print_objects(o);
-    bool collision = abs((int)o->x - playerHitZone.x) < o->width && abs((int)o->y - playerHitZone.y + 16) < o->height;
+    orect.x = o->x;
+    orect.y = o->y;
+    orect.width = o->width;
+    orect.height = o->height;
+
+    collision = collision_check(playerHitZone, orect);
 
     if (DEBUG_COLLISION){
-      orect.x = o->x;
-      orect.y = o->y;
-      orect.width = o->width;
-      orect.height = o->height;
-
       if (collision) {
         pntr_draw_rectangle_fill_rec(appData->objects, orect, PNTR_PINK);
-      }else{
+      } else {
         pntr_draw_rectangle_fill_rec(appData->objects, orect, PNTR_BLUE);
       }
     }
@@ -218,7 +231,7 @@ bool Update(pntr_app* app, pntr_image* screen) {
   bool anyDirectionKey = false;
   if (pntr_app_key_down(app, PNTR_APP_KEY_LEFT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_LEFT)) {
     playerHitZone.x -= appData->speed * pntr_app_delta_time(app);
-    if (!collision_check(appData, playerHitZone)) {
+    if (!world_collision_check(appData, playerHitZone)) {
       appData->playerX = playerHitZone.x - 4;
     }
     anyDirectionKey = true;
@@ -226,7 +239,7 @@ bool Update(pntr_app* app, pntr_image* screen) {
   }
   else if (pntr_app_key_down(app, PNTR_APP_KEY_RIGHT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_RIGHT)) {
     playerHitZone.x += appData->speed * pntr_app_delta_time(app);
-    if (!collision_check(appData, playerHitZone)) {
+    if (!world_collision_check(appData, playerHitZone)) {
       appData->playerX = playerHitZone.x - 4;
     }
     anyDirectionKey = true;
@@ -235,7 +248,7 @@ bool Update(pntr_app* app, pntr_image* screen) {
 
   if (pntr_app_key_down(app, PNTR_APP_KEY_UP) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_UP)) {
     playerHitZone.y -= appData->speed * pntr_app_delta_time(app);
-    if (!collision_check(appData, playerHitZone)) {
+    if (!world_collision_check(appData, playerHitZone)) {
       appData->playerY = playerHitZone.y + 4;
     }
     anyDirectionKey = true;
@@ -243,7 +256,7 @@ bool Update(pntr_app* app, pntr_image* screen) {
   }
   else if (pntr_app_key_down(app, PNTR_APP_KEY_DOWN) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_DOWN)) {
     playerHitZone.y += appData->speed * pntr_app_delta_time(app);
-    if (!collision_check(appData, playerHitZone)) {
+    if (!world_collision_check(appData, playerHitZone)) {
       appData->playerY = playerHitZone.y + 4;
     }
     anyDirectionKey = true;
