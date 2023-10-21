@@ -57,11 +57,7 @@ void map_portal(char* name, AppData* appData) {
   appData->y = 0;
   appData->sign_text = NULL;
 
-  appData->activatableObject = NULL;
-
   pntr_unload_tiled(appData->map);
-
-  appData->activatableObject = NULL;
 
   char fname[80];
   sprintf(fname, "resources/rpg/%s.tmj", name);
@@ -159,8 +155,6 @@ void update_map_objects(AppData* appData) {
     cute_tiled_property_t* p;
     bool touchObject;
 
-    appData->activatableObject = NULL;
-
     while (o) {
       if (strcmp(o->type.ptr, "player") == 0) {
         // draw moved to anotehr operation, so nothing to do here
@@ -178,7 +172,7 @@ void update_map_objects(AppData* appData) {
           if (strcmp(p->name.ptr, "touch") == 0 && p->data.boolean) {
             touchObject = true;
             orect.x = o->x;
-            orect.y = o->y
+            orect.y = o->y;
             orect.width = 16;
             orect.height = 16;
             break;
@@ -197,8 +191,12 @@ void update_map_objects(AppData* appData) {
 
         // handle player activation (touch/action-button)
         if (collision) {
-          if (touchObject || pntr_app_key_pressed(app, PNTR_APP_KEY_X) || pntr_app_gamepad_button_pressed(app, 0, PNTR_APP_GAMEPAD_BUTTON_A)) {
-            activate_current(o);
+          if (touchObject) {
+            // TODO: not sure where to get app here  for || pntr_app_key_pressed(app, PNTR_APP_KEY_X) || pntr_app_gamepad_button_pressed(app, 0, PNTR_APP_GAMEPAD_BUTTON_A)
+            printf("ACTION: %s (%s)\n", o->name.ptr, o->type.ptr);
+            if (strcmp(o->type.ptr, "portal") == 0) {
+              map_portal(o->name.ptr, appData);
+            }
           }
         }
 
@@ -207,16 +205,6 @@ void update_map_objects(AppData* appData) {
       }
 
       o = o->next;
-    }
-  }
-}
-
-// called on activation
-void activate_current(AppData* appData, cute_tiled_object_t* activatableObject){
-  if (activatableObject!=NULL) {
-    printf("ACTION: %s (%s)\n", activatableObject->name.ptr, activatableObject->type.ptr);
-    if (strcmp(activatableObject->type.ptr, "portal") == 0) {
-      map_portal(activatableObject->name.ptr, appData);
     }
   }
 }
