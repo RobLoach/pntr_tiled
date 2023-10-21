@@ -45,9 +45,6 @@ typedef struct AppData {
 
   cute_tiled_layer_t* layer_objects;
   cute_tiled_layer_t* layer_collisions;
-
-  // the current object the player could activate
-  cute_tiled_object_t* activatableObject;
 } AppData;
 
 // unload current map and switch to another one
@@ -159,12 +156,13 @@ void update_map_objects(AppData* appData) {
     pntr_rectangle orect = { .x=0, .y=0, .width=16*3, .height=16*3 };
     pntr_rectangle playerHitZone = { .x=appData->playerX + 4, .y=appData->playerY-4, .height=4, .width=8 };
     bool collision = false;
+    cute_tiled_property_t* p;
 
     appData->activatableObject = NULL;
 
     while (o) {
       if (strcmp(o->type.ptr, "player") == 0) {
-        // draw moved to after all rest
+        // draw moved to anotehr operation, so nothing to do here
       }
 
       else {
@@ -182,7 +180,18 @@ void update_map_objects(AppData* appData) {
         }
 
         if (collision) {
-          appData->activatableObject = o;
+          // handle player activation (touch/button)
+          if (pntr_app_key_pressed(app, PNTR_APP_KEY_X) || pntr_app_gamepad_button_pressed(app, 0, PNTR_APP_GAMEPAD_BUTTON_A)) {
+            activate_current(o);
+          } else {
+            for (int i = 0; i < o->property_count; ++i) {
+              p = o->properties + i;
+              if (strcmp(p->name.ptr, "touch") == 0 && p->data.boolean) {
+                activate_current(o, appData);
+                break;
+              }
+            }
+          }
         }
 
         // generic: draw whatever tile
@@ -195,11 +204,11 @@ void update_map_objects(AppData* appData) {
 }
 
 // called on activation
-void activate_current(AppData* appData){
-  if (appData->activatableObject!=NULL) {
-    printf("ACTION: %s (%s)\n", appData->activatableObject->name.ptr, appData->activatableObject->type.ptr);
-    if (strcmp(appData->activatableObject->type.ptr, "portal") == 0) {
-      map_portal(appData->activatableObject->name.ptr, appData);
+void activate_current(AppData* appData, cute_tiled_object_t* activatableObject){
+  if (activatableObject!=NULL) {
+    printf("ACTION: %s (%s)\n", activatableObject->name.ptr, activatableObject->type.ptr);
+    if (strcmp(activatableObject->type.ptr, "portal") == 0) {
+      map_portal(activatableObject->name.ptr, appData);
     }
   }
 }
@@ -307,22 +316,6 @@ bool Update(pntr_app* app, pntr_image* screen) {
 
   // draw all map objects
   pntr_draw_image(screen, appData->objects, appData->x, appData->y);
-
-  // handle player activation
-  if (appData->activatableObject != NULL) {
-    // check for action button
-    if (pntr_app_key_pressed(app, PNTR_APP_KEY_X) || pntr_app_gamepad_button_pressed(app, 0, PNTR_APP_GAMEPAD_BUTTON_A)) {
-      activate_current(appData);
-    } else {
-      for (int i = 0; i < appData->activatableObject->property_count; ++i) {
-        cute_tiled_property_t* p = appData->activatableObject->properties + i;
-        if (strcmp(p->name.ptr, "touch") == 0 && p->data.boolean) {
-          activate_current(appData);
-          break;
-        }
-      }
-    }
-  }
 
   pntr_update_tiled(appData->map, pntr_app_delta_time(app));
 
