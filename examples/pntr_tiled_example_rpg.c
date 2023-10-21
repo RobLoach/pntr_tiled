@@ -157,6 +157,7 @@ void update_map_objects(AppData* appData) {
     pntr_rectangle playerHitZone = { .x=appData->playerX + 4, .y=appData->playerY-4, .height=4, .width=8 };
     bool collision = false;
     cute_tiled_property_t* p;
+    bool touchObject;
 
     appData->activatableObject = NULL;
 
@@ -168,6 +169,21 @@ void update_map_objects(AppData* appData) {
       else {
         orect.x = o->x - 16;
         orect.y = o->y - 32;
+        orect.width = 16*3;
+        orect.height = 16*3;
+
+        touchObject = false;
+        for (int i = 0; i < o->property_count; ++i) {
+          p = o->properties + i;
+          if (strcmp(p->name.ptr, "touch") == 0 && p->data.boolean) {
+            touchObject = true;
+            orect.x = o->x;
+            orect.y = o->y
+            orect.width = 16;
+            orect.height = 16;
+            break;
+          }
+        }
 
         collision = collision_check(playerHitZone, orect);
 
@@ -179,18 +195,10 @@ void update_map_objects(AppData* appData) {
           }
         }
 
+        // handle player activation (touch/action-button)
         if (collision) {
-          // handle player activation (touch/button)
-          if (pntr_app_key_pressed(app, PNTR_APP_KEY_X) || pntr_app_gamepad_button_pressed(app, 0, PNTR_APP_GAMEPAD_BUTTON_A)) {
+          if (touchObject || pntr_app_key_pressed(app, PNTR_APP_KEY_X) || pntr_app_gamepad_button_pressed(app, 0, PNTR_APP_GAMEPAD_BUTTON_A)) {
             activate_current(o);
-          } else {
-            for (int i = 0; i < o->property_count; ++i) {
-              p = o->properties + i;
-              if (strcmp(p->name.ptr, "touch") == 0 && p->data.boolean) {
-                activate_current(o, appData);
-                break;
-              }
-            }
           }
         }
 
