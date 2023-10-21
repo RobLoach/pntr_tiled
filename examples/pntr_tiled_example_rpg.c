@@ -146,7 +146,9 @@ bool world_collision_check(AppData* appData, pntr_rectangle playerHitZone) {
 }
 
 // this will update/draw all the map-objects, including player, based on state of things
-void update_map_objects(AppData* appData) {
+void update_map_objects(pntr_app* app) {
+  AppData* appData = (AppData*)pntr_app_userdata(app);
+
   if (appData->layer_objects != NULL) {
     cute_tiled_object_t* o = appData->layer_objects->objects;
     pntr_rectangle orect = { .x=0, .y=0, .width=16*3, .height=16*3 };
@@ -191,8 +193,7 @@ void update_map_objects(AppData* appData) {
 
         // handle player activation (touch/action-button)
         if (collision) {
-          if (touchObject) {
-            // TODO: not sure where to get app here  for || pntr_app_key_pressed(app, PNTR_APP_KEY_X) || pntr_app_gamepad_button_pressed(app, 0, PNTR_APP_GAMEPAD_BUTTON_A)
+          if (touchObject || pntr_app_key_pressed(app, PNTR_APP_KEY_X) || pntr_app_gamepad_button_pressed(app, 0, PNTR_APP_GAMEPAD_BUTTON_A)) {
             printf("ACTION: %s (%s)\n", o->name.ptr, o->type.ptr);
             if (strcmp(o->type.ptr, "portal") == 0) {
               map_portal(o->name.ptr, appData);
@@ -255,7 +256,7 @@ bool Update(pntr_app* app, pntr_image* screen) {
 
   // update all map objects
   pntr_clear_background(appData->objects, PNTR_BLANK);
-  update_map_objects(appData);
+  update_map_objects(app);
 
   // handle walking animation
   int frame = 0;
