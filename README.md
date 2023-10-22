@@ -45,6 +45,12 @@ void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled_map_t* map, cu
 void pntr_draw_tiled_layer_tilelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 pntr_image* pntr_get_tiled_tile(cute_tiled_map_t* map, int gid);
 pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_color tint);
+void pntr_update_tiled(cute_tiled_map_t* map, float deltaTime);
+cute_tiled_layer_t* pntr_get_tiled_layer(cute_tiled_map_t* map, const char* name);
+int pntr_get_tiled_tile_at(cute_tiled_layer_t* layer, int x, int y);
+int pntr_get_tiled_tile_at_coords(cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY);
+void pntr_set_tiled_tile_at(cute_tiled_layer_t* layer, int x, int y, int gid);
+cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
 ```
 
 ## License
