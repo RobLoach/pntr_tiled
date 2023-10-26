@@ -95,6 +95,7 @@ PNTR_TILED_API pntr_image* pntr_tiled_tile_image(cute_tiled_map_t* map, int gid)
  * @return An image representing the rendered map, or NULL on failure.
  */
 PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_color tint);
+PNTR_TILED_API pntr_image* pntr_gen_image_tiled_layer(cute_tiled_map_t* map, cute_tiled_layer_t* layer, pntr_color tint);
 
 /**
  * Update the internal animation frame time counter for the map.
@@ -113,7 +114,26 @@ PNTR_TILED_API void pntr_update_tiled(cute_tiled_map_t* map, float deltaTime);
  * @return The layer if found, NULL otherwise.
  */
 PNTR_TILED_API cute_tiled_layer_t* pntr_tiled_layer(cute_tiled_map_t* map, const char* name);
+
+/**
+ * Get the gid of the tile at the given column and row.
+ *
+ * @param layer The layer to get the tile of.
+ * @param column The x coordinate of the tile.
+ * @param row The y coordinate of the tile.
+ *
+ * @return The gid of the given tile, without its flip status.
+ */
 PNTR_TILED_API int pntr_layer_tile(cute_tiled_layer_t* layer, int column, int row);
+
+/**
+ * Set the gid of the tile at the given column and row.
+ *
+ * @param layer The layer to set the tile of.
+ * @param column The x coordinate of the tile.
+ * @param row The y coordinate of the tile.
+ * @param gid The desired gid to set the tile to.
+ */
 PNTR_TILED_API void pntr_set_layer_tile(cute_tiled_layer_t* layer, int column, int row, int gid);
 
 /**
@@ -122,6 +142,9 @@ PNTR_TILED_API void pntr_set_layer_tile(cute_tiled_layer_t* layer, int column, i
  * @return The tile's column and row as a vector.
  */
 PNTR_TILED_API pntr_vector pntr_layer_tile_from_position(cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY);
+
+PNTR_TILED_API cute_tiled_layer_t* pntr_tiled_layer_from_index(cute_tiled_map_t* map, int i);
+PNTR_TILED_API int pntr_tiled_layer_count(cute_tiled_map_t* map);
 
 #ifdef PNTR_ASSETSYS_API
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
@@ -638,6 +661,20 @@ PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_colo
     return output;
 }
 
+PNTR_TILED_API pntr_image* pntr_gen_image_tiled_layer(cute_tiled_map_t* map, cute_tiled_layer_t* layer, pntr_color tint) {
+    if (map == NULL) {
+        return pntr_set_error(PNTR_ERROR_INVALID_ARGS);
+    }
+
+    pntr_image* output = pntr_gen_image_color(map->tilewidth * map->width, map->tileheight * map->height, PNTR_BLANK);
+    if (output == NULL) {
+        return NULL;
+    }
+
+    pntr_draw_tiled_layer(output, map, layer, 0, 0, tint);
+    return output;
+}
+
 PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int posX, int posY, pntr_color tint) {
     if (map == NULL) {
         return;
@@ -670,6 +707,38 @@ PNTR_TILED_API cute_tiled_layer_t* pntr_tiled_layer(cute_tiled_map_t* map, const
     }
 
     return NULL;
+}
+
+PNTR_TILED_API cute_tiled_layer_t* pntr_tiled_layer_from_index(cute_tiled_map_t* map, int i) {
+    if (map == NULL || i < 0) {
+        return NULL;
+    }
+
+    cute_tiled_layer_t* layer = map->layers;
+    int index = 0;
+    while (layer) {
+        if (index == i) {
+            return layer;
+        }
+        index++;
+        layer = layer->next;
+    }
+
+    return NULL;
+}
+
+PNTR_TILED_API int pntr_tiled_layer_count(cute_tiled_map_t* map) {
+    if (map == NULL) {
+        return 0;
+    }
+
+    cute_tiled_layer_t* layer = map->layers;
+    int count = 0;
+    while (layer) {
+        count++;
+        layer = layer->next;
+    }
+    return count;
 }
 
 PNTR_TILED_API int pntr_layer_tile(cute_tiled_layer_t* layer, int column, int row) {

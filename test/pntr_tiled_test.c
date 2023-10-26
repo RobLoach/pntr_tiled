@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <string.h>
 
 #define PNTR_IMPLEMENTATION
 #include "pntr.h"
@@ -61,7 +62,7 @@ int main() {
             assert(pntr_layer_tile(layer, 2, 2) == 34);
         }
 
-        // pntr_tiled_tile_image_from_coords()
+        // pntr_layer_tile_from_position()
         {
             cute_tiled_layer_t* layer = pntr_tiled_layer(map, "Plants");
             assert(layer != NULL);
@@ -73,6 +74,23 @@ int main() {
             result = pntr_layer_tile_from_position(map, layer, 140, 53);
             assert(result.x == 4);
             assert(result.y == 1);
+        }
+
+        // pntr_tiled_layer_count()
+        {
+            assert(pntr_tiled_layer_count(map) == 4);
+        }
+
+        // pntr_tiled_layer_from_index()
+        {
+            cute_tiled_layer_t* layer = pntr_tiled_layer_from_index(map, 2);
+            assert(strcmp(layer->name.ptr, "Plants") == 0);
+
+            layer = pntr_tiled_layer_from_index(map, -5);
+            assert(layer == NULL);
+
+            layer = pntr_tiled_layer_from_index(map, 500);
+            assert(layer == NULL);
         }
 
         pntr_unload_tiled(map);
