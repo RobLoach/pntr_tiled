@@ -146,6 +146,7 @@ PNTR_TILED_API pntr_vector pntr_layer_tile_from_position(cute_tiled_map_t* map, 
 
 PNTR_TILED_API cute_tiled_layer_t* pntr_tiled_layer_from_index(cute_tiled_map_t* map, int i);
 PNTR_TILED_API int pntr_tiled_layer_count(cute_tiled_map_t* map);
+PNTR_TILED_API cute_tiled_object_t* pntr_tiled_object(cute_tiled_map_t* map, cute_tiled_layer_t* layer, const char* name);
 
 #ifdef PNTR_ASSETSYS_API
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
@@ -391,12 +392,12 @@ PNTR_TILED_API pntr_image* pntr_tiled_tile_image(cute_tiled_map_t* map, int gid)
             int desiredMilliseconds = map->nextlayerid % tile->animationDuration;
             int desiredFrame = 0;
             int millisecondsCounter = 0;
-            for (int i = 0; i < tile->descriptor->frame_count; i++) {
-                millisecondsCounter += tile->descriptor->animation[i].duration;
-                if (millisecondsCounter < desiredMilliseconds) {
+            while (desiredFrame < tile->descriptor->frame_count) {
+                millisecondsCounter += tile->descriptor->animation[desiredFrame].duration;
+                if (millisecondsCounter > desiredMilliseconds) {
                     break;
                 }
-                desiredFrame = i;
+                desiredFrame++;
             }
 
             // Switch the tile to the animation frame.
@@ -805,6 +806,42 @@ PNTR_TILED_API pntr_vector pntr_layer_tile_from_position(cute_tiled_map_t* map, 
         .x = (posX - layer->offsetx) / map->tilewidth,
         .y = (posY - layer->offsety) / map->tileheight
     };
+}
+
+PNTR_TILED_API cute_tiled_object_t* pntr_tiled_object(cute_tiled_map_t* map, cute_tiled_layer_t* layer, const char* name) {
+    if (map == NULL || name == NULL) {
+        return NULL;
+    }
+
+    if (layer == NULL) {
+        layer = map->layers;
+    }
+
+    while (layer) {
+        if (layer->type.ptr == NULL) {
+            break;
+        }
+
+        if (layer->type.ptr[0] == 'g' && layer->layers != NULL) {
+            cute_tiled_object_t* output = pntr_tiled_object(map, layer->layers, name);
+            if (output) {
+                return output;
+            }
+        }
+        else if (layer->type.ptr[0] == 'o') {
+            cute_tiled_object_t* output = layer->objects;
+            while (output) {
+                if (output->name.ptr != NULL && PNTR_STRCMP(output->name.ptr, name) == 0) {
+                    return output;
+                }
+                output = output->next;
+            }
+        }
+
+        layer = layer->next;
+    }
+
+    return NULL;
 }
 
 /**

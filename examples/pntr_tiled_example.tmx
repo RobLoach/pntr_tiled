@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="git" orientation="orthogonal" renderorder="right-down" width="40" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="7" nextobjectid="10">
+<map version="1.10" tiledversion="git" orientation="orthogonal" renderorder="right-down" width="40" height="40" tilewidth="32" tileheight="32" infinite="0" nextlayerid="7" nextobjectid="11">
  <editorsettings>
   <export target="resources/desert.json" format="json"/>
  </editorsettings>
@@ -249,6 +249,41 @@
    </wangset>
   </wangsets>
  </tileset>
+ <tileset firstgid="49" name="George" tilewidth="48" tileheight="48" tilecount="16" columns="4">
+  <image source="resources/george.png" width="192" height="192"/>
+  <tile id="1">
+   <animation>
+    <frame tileid="1" duration="200"/>
+    <frame tileid="0" duration="150"/>
+    <frame tileid="2" duration="200"/>
+    <frame tileid="0" duration="150"/>
+   </animation>
+  </tile>
+  <tile id="4">
+   <animation>
+    <frame tileid="4" duration="200"/>
+    <frame tileid="3" duration="150"/>
+    <frame tileid="5" duration="200"/>
+    <frame tileid="3" duration="150"/>
+   </animation>
+  </tile>
+  <tile id="7">
+   <animation>
+    <frame tileid="7" duration="200"/>
+    <frame tileid="6" duration="150"/>
+    <frame tileid="9" duration="200"/>
+    <frame tileid="8" duration="150"/>
+   </animation>
+  </tile>
+  <tile id="11">
+   <animation>
+    <frame tileid="11" duration="200"/>
+    <frame tileid="10" duration="150"/>
+    <frame tileid="12" duration="200"/>
+    <frame tileid="10" duration="150"/>
+   </animation>
+  </tile>
+ </tileset>
  <layer id="1" name="Ground" width="40" height="40">
   <data encoding="csv">
 30,30,30,30,40,30,30,30,39,30,30,30,30,30,30,30,30,30,30,30,30,30,30,30,14,15,16,30,30,30,30,30,30,30,30,30,30,30,30,30,
@@ -338,12 +373,8 @@
 </data>
  </layer>
  <objectgroup id="5" name="Objects">
-  <object id="5" name="Player" type="player" x="258" y="64">
-   <point/>
-  </object>
   <object id="7" gid="39" x="370" y="77" width="32" height="32"/>
-  <object id="8" name="Hello World Sign" type="sign" gid="2147483694" x="65" y="144" width="32" height="32"/>
-  <object id="9" name="Goodbye World Sign" type="sign" gid="2147483694" x="387" y="138" width="32" height="32"/>
+  <object id="10" name="George" gid="49" x="15.5" y="61.6667" width="48" height="48"/>
  </objectgroup>
  <imagelayer id="6" name="Image Layer" opacity="0.7" tintcolor="#00a600" offsetx="11.0003" offsety="143">
   <image source="resources/logo.png" width="128" height="128"/>

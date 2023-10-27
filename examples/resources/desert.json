@@ -110,18 +110,6 @@
          "name":"Objects",
          "objects":[
                 {
-                 "height":0,
-                 "id":5,
-                 "name":"Player",
-                 "point":true,
-                 "rotation":0,
-                 "type":"player",
-                 "visible":true,
-                 "width":0,
-                 "x":258,
-                 "y":64
-                }, 
-                {
                  "gid":39,
                  "height":32,
                  "id":7,
@@ -134,28 +122,16 @@
                  "y":77
                 }, 
                 {
-                 "gid":2147483694,
-                 "height":32,
-                 "id":8,
-                 "name":"Hello World Sign",
+                 "gid":49,
+                 "height":48,
+                 "id":10,
+                 "name":"George",
                  "rotation":0,
-                 "type":"sign",
+                 "type":"",
                  "visible":true,
-                 "width":32,
-                 "x":65,
-                 "y":144
-                }, 
-                {
-                 "gid":2147483694,
-                 "height":32,
-                 "id":9,
-                 "name":"Goodbye World Sign",
-                 "rotation":0,
-                 "type":"sign",
-                 "visible":true,
-                 "width":32,
-                 "x":387,
-                 "y":138
+                 "width":48,
+                 "x":15.5,
+                 "y":61.6667
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -177,7 +153,7 @@
          "y":0
         }],
  "nextlayerid":7,
- "nextobjectid":10,
+ "nextobjectid":11,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"git",
@@ -1430,6 +1406,100 @@
                          "wangid":[0, 1, 0, 1, 0, 1, 0, 1]
                         }]
                 }]
+        }, 
+        {
+         "columns":4,
+         "firstgid":49,
+         "image":"george.png",
+         "imageheight":192,
+         "imagewidth":192,
+         "margin":0,
+         "name":"George",
+         "spacing":0,
+         "tilecount":16,
+         "tileheight":48,
+         "tiles":[
+                {
+                 "animation":[
+                        {
+                         "duration":200,
+                         "tileid":1
+                        }, 
+                        {
+                         "duration":150,
+                         "tileid":0
+                        }, 
+                        {
+                         "duration":200,
+                         "tileid":2
+                        }, 
+                        {
+                         "duration":150,
+                         "tileid":0
+                        }],
+                 "id":1
+                }, 
+                {
+                 "animation":[
+                        {
+                         "duration":200,
+                         "tileid":4
+                        }, 
+                        {
+                         "duration":150,
+                         "tileid":3
+                        }, 
+                        {
+                         "duration":200,
+                         "tileid":5
+                        }, 
+                        {
+                         "duration":150,
+                         "tileid":3
+                        }],
+                 "id":4
+                }, 
+                {
+                 "animation":[
+                        {
+                         "duration":200,
+                         "tileid":7
+                        }, 
+                        {
+                         "duration":150,
+                         "tileid":6
+                        }, 
+                        {
+                         "duration":200,
+                         "tileid":9
+                        }, 
+                        {
+                         "duration":150,
+                         "tileid":8
+                        }],
+                 "id":7
+                }, 
+                {
+                 "animation":[
+                        {
+                         "duration":200,
+                         "tileid":11
+                        }, 
+                        {
+                         "duration":150,
+                         "tileid":10
+                        }, 
+                        {
+                         "duration":200,
+                         "tileid":12
+                        }, 
+                        {
+                         "duration":150,
+                         "tileid":10
+                        }],
+                 "id":11
+                }],
+         "tilewidth":48
         }],
  "tilewidth":32,
  "type":"map",
