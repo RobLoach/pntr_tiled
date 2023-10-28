@@ -147,6 +147,7 @@ PNTR_TILED_API pntr_vector pntr_layer_tile_from_position(cute_tiled_map_t* map, 
 PNTR_TILED_API cute_tiled_layer_t* pntr_tiled_layer_from_index(cute_tiled_map_t* map, int i);
 PNTR_TILED_API int pntr_tiled_layer_count(cute_tiled_map_t* map);
 PNTR_TILED_API cute_tiled_object_t* pntr_tiled_object(cute_tiled_map_t* map, cute_tiled_layer_t* layer, const char* name);
+PNTR_TILED_API cute_tiled_tileset_t* pntr_tiled_tileset(cute_tiled_map_t* map, const char* name);
 
 #ifdef PNTR_ASSETSYS_API
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
@@ -839,6 +840,22 @@ PNTR_TILED_API cute_tiled_object_t* pntr_tiled_object(cute_tiled_map_t* map, cut
         }
 
         layer = layer->next;
+    }
+
+    return NULL;
+}
+
+PNTR_TILED_API cute_tiled_tileset_t* pntr_tiled_tileset(cute_tiled_map_t* map, const char* name) {
+    if (map == NULL) {
+        return NULL;
+    }
+
+    cute_tiled_tileset_t* tileset = map->tilesets;
+    while (tileset) {
+        if (tileset->name.ptr != NULL && PNTR_STRCMP(tileset->name.ptr, name) == 0) {
+            return tileset;
+        }
+        tileset = tileset->next;
     }
 
     return NULL;

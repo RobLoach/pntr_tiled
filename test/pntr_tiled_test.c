@@ -93,6 +93,13 @@ int main() {
             assert(layer == NULL);
         }
 
+        // pntr_tiled_tileset()
+        {
+            cute_tiled_tileset_t* tileset = pntr_tiled_tileset(map, "Desert");
+            assert(tileset != NULL);
+            assert(strcmp(tileset->name.ptr, "Desert") == 0);
+        }
+
         pntr_unload_tiled(map);
     }
 
