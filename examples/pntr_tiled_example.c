@@ -7,7 +7,7 @@
 typedef struct AppData {
     cute_tiled_map_t* map;
     int speed;
-    int x, y;
+    pntr_vector camera;
     cute_tiled_object_t* player;
 } AppData;
 
@@ -16,9 +16,9 @@ bool Init(pntr_app* app) {
     pntr_app_set_userdata(app, appData);
 
     appData->map = pntr_load_tiled("resources/desert.json");
-    appData->x = 0;
-    appData->y = 0;
-    appData->speed = 50;
+    appData->camera.x = 0;
+    appData->camera.y = 0;
+    appData->speed = 100;
     appData->player = pntr_tiled_object(appData->map, NULL, "George");
 
     return true;
@@ -74,24 +74,21 @@ bool Update(pntr_app* app, pntr_image* screen) {
         }
     }
 
-    // Mouse
-    if (pntr_app_mouse_button_down(app, PNTR_APP_MOUSE_BUTTON_LEFT)) {
-        appData->x -= pntr_app_mouse_delta_x(app);// * pntr_app_delta_time(app) * app->fps;
-        appData->y -= pntr_app_mouse_delta_y(app);// * pntr_app_delta_time(app) * app->fps;
-    }
+    appData->camera.x = -appData->player->x + screen->width / 2 - appData->player->width / 2;
+    appData->camera.y = -appData->player->y + screen->height / 2 + appData->player->height / 2;
 
     // Keep the map within screen bounds
-    if (appData->x > 0) {
-        appData->x = 0;
+    if (appData->camera.x > 0) {
+        appData->camera.x = 0;
     }
-    if (appData->y > 0) {
-        appData->y = 0;
+    if (appData->camera.y > 0) {
+        appData->camera.y = 0;
     }
-    if (appData->x - screen->width < -appData->map->width * appData->map->tilewidth) {
-        appData->x = -appData->map->width * appData->map->tilewidth + screen->width;
+    if (appData->camera.x - screen->width < -appData->map->width * appData->map->tilewidth) {
+        appData->camera.x = -appData->map->width * appData->map->tilewidth + screen->width;
     }
-    if (appData->y - screen->height < -appData->map->height * appData->map->tileheight) {
-        appData->y = -appData->map->height * appData->map->tileheight + screen->height;
+    if (appData->camera.y - screen->height < -appData->map->height * appData->map->tileheight) {
+        appData->camera.y = -appData->map->height * appData->map->tileheight + screen->height;
     }
 
     // Update any map data.
@@ -101,7 +98,7 @@ bool Update(pntr_app* app, pntr_image* screen) {
     pntr_clear_background(screen, PNTR_BLACK);
 
     // Draw the map
-    pntr_draw_tiled(screen, appData->map, appData->x, appData->y, PNTR_WHITE);
+    pntr_draw_tiled(screen, appData->map, appData->camera.x, appData->camera.y, PNTR_WHITE);
 
     return true;
 }
