@@ -100,6 +100,35 @@ int main() {
             assert(strcmp(tileset->name.ptr, "Desert") == 0);
         }
 
+        // pntr_tiled_tile_in_rec()
+        {
+            {
+                cute_tiled_layer_t* layer = pntr_tiled_layer(map, "Plants");
+                pntr_rectangle bounds = (pntr_rectangle) {
+                    .x = 70,
+                    .y = 120,
+                    .width = 280,
+                    .height = 300
+                };
+                pntr_vector tile = pntr_tiled_tile_in_rec(map, layer, bounds, 38, PNTR_TILED_CONDITION_EQUALS);
+                assert(tile.x == 2);
+                assert(tile.y == 6);
+            }
+
+            {
+                cute_tiled_layer_t* layer = pntr_tiled_layer(map, "Desert");
+                pntr_rectangle bounds = (pntr_rectangle) {
+                    .x = 0,
+                    .y = 0,
+                    .width = map->width * map->tilewidth,
+                    .height = map->height * map->tileheight
+                };
+                pntr_vector tile = pntr_tiled_tile_in_rec(map, layer, bounds, 30, PNTR_TILED_CONDITION_NOT_EQUALS);
+                assert(tile.x == 8);
+                assert(tile.y == 3);
+            }
+        }
+
         pntr_unload_tiled(map);
     }
 

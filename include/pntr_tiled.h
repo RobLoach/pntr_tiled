@@ -52,6 +52,11 @@ extern "C" {
     #define PNTR_TILED_API PNTR_API
 #endif
 
+typedef enum pntr_tiled_condition {
+    PNTR_TILED_CONDITION_EQUALS = 0,
+    PNTR_TILED_CONDITION_NOT_EQUALS
+} pntr_tiled_condition;
+
 /**
  * Load a Tiled map that is exported as a JSON file.
  *
@@ -148,6 +153,7 @@ PNTR_TILED_API cute_tiled_layer_t* pntr_tiled_layer_from_index(cute_tiled_map_t*
 PNTR_TILED_API int pntr_tiled_layer_count(cute_tiled_map_t* map);
 PNTR_TILED_API cute_tiled_object_t* pntr_tiled_object(cute_tiled_map_t* map, cute_tiled_layer_t* layer, const char* name);
 PNTR_TILED_API cute_tiled_tileset_t* pntr_tiled_tileset(cute_tiled_map_t* map, const char* name);
+PNTR_TILED_API pntr_vector pntr_tiled_tile_in_rec(cute_tiled_map_t* map, cute_tiled_layer_t* layer, pntr_rectangle bounds, int gid, pntr_tiled_condition condition);
 
 #ifdef PNTR_ASSETSYS_API
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
@@ -859,6 +865,35 @@ PNTR_TILED_API cute_tiled_tileset_t* pntr_tiled_tileset(cute_tiled_map_t* map, c
     }
 
     return NULL;
+}
+
+PNTR_TILED_API pntr_vector pntr_tiled_tile_in_rec(cute_tiled_map_t* map, cute_tiled_layer_t* layer, pntr_rectangle bounds, int gid, pntr_tiled_condition condition) {
+    if (map == NULL || layer == NULL) {
+        return (pntr_vector) { .x = -1, .y = -1 };
+    }
+
+    pntr_vector topleft = pntr_layer_tile_from_position(map, layer, bounds.x, bounds.y);
+    pntr_vector bottomright = pntr_layer_tile_from_position(map, layer, bounds.x + bounds.width, bounds.y + bounds.height);
+
+    for (int x = topleft.x; x <= bottomright.x; x++) {
+        for (int y = topleft.y; y <= bottomright.y; y++) {
+            switch (condition) {
+                case PNTR_TILED_CONDITION_EQUALS:
+                    if (pntr_layer_tile(layer, x, y) == gid) {
+                        return (pntr_vector) {.x = x, .y = y};
+                    }
+                    break;
+                case PNTR_TILED_CONDITION_NOT_EQUALS:
+                    int tile = pntr_layer_tile(layer, x, y);
+                    if (tile != 0 && tile != gid) {
+                        return (pntr_vector) {.x = x, .y = y};
+                    }
+                    break;
+            }
+        }
+    }
+
+    return (pntr_vector) { .x = -1, .y = -1 };
 }
 
 /**
