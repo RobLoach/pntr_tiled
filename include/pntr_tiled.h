@@ -153,9 +153,7 @@ PNTR_TILED_API cute_tiled_layer_t* pntr_tiled_layer_from_index(cute_tiled_map_t*
 PNTR_TILED_API int pntr_tiled_layer_count(cute_tiled_map_t* map);
 PNTR_TILED_API cute_tiled_object_t* pntr_tiled_object(cute_tiled_map_t* map, cute_tiled_layer_t* layer, const char* name);
 PNTR_TILED_API cute_tiled_tileset_t* pntr_tiled_tileset(cute_tiled_map_t* map, const char* name);
-PNTR_TILED_API pntr_rectangle pntr_tiled_object_bounds(cute_tiled_object_t* object);
-PNTR_TILED_API void pntr_tiled_set_object_position(cute_tiled_object_t* object, float x, float y);
-PNTR_TILED_API pntr_vector pntr_tiled_check_in_bounds(cute_tiled_map_t* map, cute_tiled_layer_t* layer, pntr_rectangle bounds, int gid, pntr_tiled_condition condition);
+PNTR_TILED_API pntr_vector pntr_tiled_tile_in_rec(cute_tiled_map_t* map, cute_tiled_layer_t* layer, pntr_rectangle bounds, int gid, pntr_tiled_condition condition);
 
 #ifdef PNTR_ASSETSYS_API
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
@@ -869,34 +867,7 @@ PNTR_TILED_API cute_tiled_tileset_t* pntr_tiled_tileset(cute_tiled_map_t* map, c
     return NULL;
 }
 
-PNTR_TILED_API pntr_rectangle pntr_tiled_object_bounds(cute_tiled_object_t* object) {
-    if (object == NULL) {
-        return (pntr_rectangle) {
-            .x = 0,
-            .y = 0,
-            .width = 0,
-            .height = 0
-        };
-    }
-
-    return (pntr_rectangle) {
-        .x = object->x,
-        .y = object->y - object->height,
-        .width = object->width,
-        .height = object->height
-    };
-}
-
-PNTR_TILED_API void pntr_tiled_set_object_position(cute_tiled_object_t* object, float x, float y) {
-    if (object == NULL) {
-        return;
-    }
-
-    object->x = x;
-    object->y = y + object->height;
-}
-
-PNTR_TILED_API pntr_vector pntr_tiled_tile_in_bounds(cute_tiled_map_t* map, cute_tiled_layer_t* layer, pntr_rectangle bounds, int gid, pntr_tiled_condition condition) {
+PNTR_TILED_API pntr_vector pntr_tiled_tile_in_rec(cute_tiled_map_t* map, cute_tiled_layer_t* layer, pntr_rectangle bounds, int gid, pntr_tiled_condition condition) {
     if (map == NULL || layer == NULL) {
         return (pntr_vector) { .x = -1, .y = -1 };
     }
@@ -906,7 +877,6 @@ PNTR_TILED_API pntr_vector pntr_tiled_tile_in_bounds(cute_tiled_map_t* map, cute
 
     for (int x = topleft.x; x <= bottomright.x; x++) {
         for (int y = topleft.y; y <= bottomright.y; y++) {
-            int relatedTile = ;
             switch (condition) {
                 case PNTR_TILED_CONDITION_EQUALS:
                     if (pntr_layer_tile(layer, x, y) == gid) {
@@ -914,7 +884,8 @@ PNTR_TILED_API pntr_vector pntr_tiled_tile_in_bounds(cute_tiled_map_t* map, cute
                     }
                     break;
                 case PNTR_TILED_CONDITION_NOT_EQUALS:
-                    if (pntr_layer_tile(layer, x, y) != gid) {
+                    int tile = pntr_layer_tile(layer, x, y);
+                    if (tile != 0 && tile != gid) {
                         return (pntr_vector) {.x = x, .y = y};
                     }
                     break;
