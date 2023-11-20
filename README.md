@@ -12,7 +12,7 @@ Use [Tiled](https://www.mapeditor.org) maps in [pntr](https://github.com/RobLoac
 
 int main() {
     // Load the Tiled JSON file
-    cute_tiled_map_t* map = pntr_load_tiled("myworld.json");
+    cute_tiled_map_t* map = pntr_load_tiled("mymap.json");
 
     // Generate an image of the Tiled map
     pntr_image* image = pntr_gen_image_tiled(map, PNTR_WHITE);
