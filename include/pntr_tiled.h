@@ -85,7 +85,7 @@ PNTR_TILED_API void pntr_draw_tiled_layer_tilelayer(pntr_image* dst, cute_tiled_
  *
  * @return A subimage from the tileset for the given tile.
  */
-PNTR_TILED_API pntr_image* pntr_get_tiled_tile(cute_tiled_map_t* map, int gid);
+PNTR_TILED_API pntr_image* pntr_tiled_tile_image(cute_tiled_map_t* map, int gid);
 
 /**
  * Generate an image of the given Tiled map.
@@ -95,6 +95,7 @@ PNTR_TILED_API pntr_image* pntr_get_tiled_tile(cute_tiled_map_t* map, int gid);
  * @return An image representing the rendered map, or NULL on failure.
  */
 PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_color tint);
+PNTR_TILED_API pntr_image* pntr_gen_image_tiled_layer(cute_tiled_map_t* map, cute_tiled_layer_t* layer, pntr_color tint);
 
 /**
  * Update the internal animation frame time counter for the map.
@@ -103,6 +104,47 @@ PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_colo
  * @param deltaTime The amount of time that changed from the last update, in seconds.
  */
 PNTR_TILED_API void pntr_update_tiled(cute_tiled_map_t* map, float deltaTime);
+
+/**
+ * Get a layer from its name.
+ *
+ * @param map The map to search through.
+ * @param name The name of the layer to return.
+ *
+ * @return The layer if found, NULL otherwise.
+ */
+PNTR_TILED_API cute_tiled_layer_t* pntr_tiled_layer(cute_tiled_map_t* map, const char* name);
+
+/**
+ * Get the gid of the tile at the given column and row.
+ *
+ * @param layer The layer to get the tile of.
+ * @param column The x coordinate of the tile.
+ * @param row The y coordinate of the tile.
+ *
+ * @return The gid of the given tile, without its flip status.
+ */
+PNTR_TILED_API int pntr_layer_tile(cute_tiled_layer_t* layer, int column, int row);
+
+/**
+ * Set the gid of the tile at the given column and row.
+ *
+ * @param layer The layer to set the tile of.
+ * @param column The x coordinate of the tile.
+ * @param row The y coordinate of the tile.
+ * @param gid The desired gid to set the tile to.
+ */
+PNTR_TILED_API void pntr_set_layer_tile(cute_tiled_layer_t* layer, int column, int row, int gid);
+
+/**
+ * Retrieve the tile column/row that appears at the given X/Y position.
+ *
+ * @return The tile's column and row as a vector.
+ */
+PNTR_TILED_API pntr_vector pntr_layer_tile_from_position(cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY);
+
+PNTR_TILED_API cute_tiled_layer_t* pntr_tiled_layer_from_index(cute_tiled_map_t* map, int i);
+PNTR_TILED_API int pntr_tiled_layer_count(cute_tiled_map_t* map);
 
 #ifdef PNTR_ASSETSYS_API
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
@@ -340,7 +382,7 @@ void _pntr_load_map_data(cute_tiled_map_t* map) {
     map->tiledversion.ptr = (const char*)tiles;
 }
 
-PNTR_TILED_API pntr_image* pntr_get_tiled_tile(cute_tiled_map_t* map, int gid) {
+PNTR_TILED_API pntr_image* pntr_tiled_tile_image(cute_tiled_map_t* map, int gid) {
     if (gid <= 0) {
         return NULL;
     }
@@ -515,7 +557,7 @@ PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map,
     int tileID = cute_tiled_unset_flags(gid);
 
     // Get the tile image.
-    pntr_image* tile = pntr_get_tiled_tile(map, tileID);
+    pntr_image* tile = pntr_tiled_tile_image(map, tileID);
     if (tile == NULL) {
         return;
     }
@@ -633,6 +675,20 @@ PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_colo
     return output;
 }
 
+PNTR_TILED_API pntr_image* pntr_gen_image_tiled_layer(cute_tiled_map_t* map, cute_tiled_layer_t* layer, pntr_color tint) {
+    if (map == NULL) {
+        return pntr_set_error(PNTR_ERROR_INVALID_ARGS);
+    }
+
+    pntr_image* output = pntr_gen_image_color(map->tilewidth * map->width, map->tileheight * map->height, PNTR_BLANK);
+    if (output == NULL) {
+        return NULL;
+    }
+
+    pntr_draw_tiled_layer(output, map, layer, 0, 0, tint);
+    return output;
+}
+
 PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int posX, int posY, pntr_color tint) {
     if (map == NULL) {
         return;
@@ -649,6 +705,97 @@ PNTR_TILED_API void pntr_update_tiled(cute_tiled_map_t* map, float deltaTime) {
     if (map->nextlayerid > 30000) {
         map->nextlayerid -= 30000;
     }
+}
+
+PNTR_TILED_API cute_tiled_layer_t* pntr_tiled_layer(cute_tiled_map_t* map, const char* name) {
+    if (map == NULL || name == NULL) {
+        return NULL;
+    }
+
+    cute_tiled_layer_t* layer = map->layers;
+    while (layer) {
+        if (PNTR_STRCMP(layer->name.ptr, name) == 0) {
+            return layer;
+        }
+        layer = layer->next;
+    }
+
+    return NULL;
+}
+
+PNTR_TILED_API cute_tiled_layer_t* pntr_tiled_layer_from_index(cute_tiled_map_t* map, int i) {
+    if (map == NULL || i < 0) {
+        return NULL;
+    }
+
+    cute_tiled_layer_t* layer = map->layers;
+    int index = 0;
+    while (layer) {
+        if (index == i) {
+            return layer;
+        }
+        index++;
+        layer = layer->next;
+    }
+
+    return NULL;
+}
+
+PNTR_TILED_API int pntr_tiled_layer_count(cute_tiled_map_t* map) {
+    if (map == NULL) {
+        return 0;
+    }
+
+    cute_tiled_layer_t* layer = map->layers;
+    int count = 0;
+    while (layer) {
+        count++;
+        layer = layer->next;
+    }
+    return count;
+}
+
+PNTR_TILED_API int pntr_layer_tile(cute_tiled_layer_t* layer, int column, int row) {
+    if (layer == NULL || layer->data == NULL) {
+        return 0;
+    }
+
+    int index = row * layer->width + column;
+    if (index < 0 || index >= layer->data_count) {
+        return 0;
+    }
+
+    // TODO: Allow getting flip status?
+    return cute_tiled_unset_flags(layer->data[index]);
+}
+
+PNTR_TILED_API void pntr_set_layer_tile(cute_tiled_layer_t* layer, int column, int row, int gid) {
+    if (layer == NULL || layer->data == NULL || gid < 0) {
+        return;
+    }
+
+    int index = row * layer->width + column;
+    if (index >= layer->data_count || index < 0) {
+        return;
+    }
+
+    // TODO: Add flip status to set_tiled_tile_at()
+    layer->data[index] = gid;
+}
+
+PNTR_TILED_API pntr_vector pntr_layer_tile_from_position(cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY) {
+    if (map == NULL || layer == NULL || map->tilewidth <= 0 || map->tileheight <= 0) {
+        return (pntr_vector) {
+            .x = -1,
+            .y = -1
+        };
+    }
+
+    // TODO: Is the layer offset correct?
+    return (pntr_vector) {
+        .x = (posX - layer->offsetx) / map->tilewidth,
+        .y = (posY - layer->offsety) / map->tileheight
+    };
 }
 
 /**
