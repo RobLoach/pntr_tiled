@@ -617,7 +617,7 @@ PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled
         tint = pntr_color_alpha_blend(tint,
             _pntr_get_tiled_color(layer->tintcolor)
         );
-        tint.a *= layer->opacity;
+        tint.rgba.a *= layer->opacity;
     }
 
     // TODO: Image layer: Support repeatx and repeaty
@@ -626,7 +626,7 @@ PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled
 }
 
 PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
-    if (dst == NULL || map == NULL || layer == NULL || tint.a == 0) {
+    if (dst == NULL || map == NULL || layer == NULL || tint.rgba.a == 0) {
         return;
     }
 
@@ -635,7 +635,7 @@ PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map
             // Apply opacity to the layer
             pntr_color tintWithOpacity = tint;
             if (layer->opacity != 1) {
-                tintWithOpacity.a = (float)tintWithOpacity.a * layer->opacity;
+                pntr_color_set_a(&tintWithOpacity, (unsigned char)((float)pntr_color_a(tintWithOpacity) * layer->opacity));
             }
 
             // Draw the layer
