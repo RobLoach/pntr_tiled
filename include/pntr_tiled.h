@@ -52,6 +52,11 @@ extern "C" {
     #define PNTR_TILED_API PNTR_API
 #endif
 
+typedef enum pntr_tiled_condition {
+    PNTR_TILED_CONDITION_EQUALS = 0,
+    PNTR_TILED_CONDITION_NOT_EQUALS
+} pntr_tiled_condition;
+
 /**
  * Load a Tiled map that is exported as a JSON file.
  *
@@ -104,6 +109,7 @@ PNTR_TILED_API pntr_image* pntr_gen_image_tiled_layer(cute_tiled_map_t* map, cut
  * @param deltaTime The amount of time that changed from the last update, in seconds.
  */
 PNTR_TILED_API void pntr_update_tiled(cute_tiled_map_t* map, float deltaTime);
+PNTR_TILED_API void pntr_draw_tiled_layer_objectgroup(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 
 /**
  * Get a layer from its name.
@@ -145,6 +151,9 @@ PNTR_TILED_API pntr_vector pntr_layer_tile_from_position(cute_tiled_map_t* map, 
 
 PNTR_TILED_API cute_tiled_layer_t* pntr_tiled_layer_from_index(cute_tiled_map_t* map, int i);
 PNTR_TILED_API int pntr_tiled_layer_count(cute_tiled_map_t* map);
+PNTR_TILED_API cute_tiled_object_t* pntr_tiled_object(cute_tiled_map_t* map, cute_tiled_layer_t* layer, const char* name);
+PNTR_TILED_API cute_tiled_tileset_t* pntr_tiled_tileset(cute_tiled_map_t* map, const char* name);
+PNTR_TILED_API pntr_vector pntr_tiled_tile_in_rec(cute_tiled_map_t* map, cute_tiled_layer_t* layer, pntr_rectangle bounds, int gid, pntr_tiled_condition condition);
 
 #ifdef PNTR_ASSETSYS_API
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
@@ -398,12 +407,12 @@ PNTR_TILED_API pntr_image* pntr_tiled_tile_image(cute_tiled_map_t* map, int gid)
             int desiredMilliseconds = map->nextlayerid % tile->animationDuration;
             int desiredFrame = 0;
             int millisecondsCounter = 0;
-            for (int i = 0; i < tile->descriptor->frame_count; i++) {
-                millisecondsCounter += tile->descriptor->animation[i].duration;
-                if (millisecondsCounter < desiredMilliseconds) {
+            while (desiredFrame < tile->descriptor->frame_count) {
+                millisecondsCounter += tile->descriptor->animation[desiredFrame].duration;
+                if (millisecondsCounter > desiredMilliseconds) {
                     break;
                 }
-                desiredFrame = i;
+                desiredFrame++;
             }
 
             // Switch the tile to the animation frame.
@@ -625,6 +634,29 @@ PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled
     pntr_draw_image_tint(dst, image, posX, posY, tint);
 }
 
+PNTR_TILED_API void pntr_draw_tiled_object(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_object_t* object, int posX, int posY, pntr_color tint) {
+    if (object == NULL || dst == NULL || map == NULL) {
+        return;
+    }
+
+    #ifdef PNTR_DRAW_TILED_OBJECT
+        PNTR_DRAW_TILED_OBJECT(dst, map, object, posX, posY, tint);
+    #else
+        if (object->gid != 0) {
+            // TODO: Support rotation and stretching of object tile drawing.
+            pntr_draw_tiled_tile(dst, map, object->gid, posX, posY - object->height, tint);
+        }
+    #endif
+}
+
+PNTR_TILED_API void pntr_draw_tiled_layer_objectgroup(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
+    cute_tiled_object_t* object = layer->objects;
+    while (object) {
+        pntr_draw_tiled_object(dst, map, object, posX + object->x, posY + object->y, tint);
+        object = object->next;
+    }
+}
+
 PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
     if (dst == NULL || map == NULL || layer == NULL || tint.rgba.a == 0) {
         return;
@@ -647,8 +679,7 @@ PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map
                     pntr_draw_tiled_layer(dst, map, layer->layers, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
                 break;
                 case 'o': // "objectgroup"
-                    // TODO: Draw the objects?
-                    //DrawMapLayerObjects(layer->objects, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
+                    pntr_draw_tiled_layer_objectgroup(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
                 break;
                 case 'i': // "imagelayer"
                     pntr_draw_tiled_layer_imagelayer(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
@@ -796,6 +827,87 @@ PNTR_TILED_API pntr_vector pntr_layer_tile_from_position(cute_tiled_map_t* map, 
         .x = (posX - layer->offsetx) / map->tilewidth,
         .y = (posY - layer->offsety) / map->tileheight
     };
+}
+
+PNTR_TILED_API cute_tiled_object_t* pntr_tiled_object(cute_tiled_map_t* map, cute_tiled_layer_t* layer, const char* name) {
+    if (map == NULL || name == NULL) {
+        return NULL;
+    }
+
+    if (layer == NULL) {
+        layer = map->layers;
+    }
+
+    while (layer) {
+        if (layer->type.ptr == NULL) {
+            break;
+        }
+
+        if (layer->type.ptr[0] == 'g' && layer->layers != NULL) {
+            cute_tiled_object_t* output = pntr_tiled_object(map, layer->layers, name);
+            if (output) {
+                return output;
+            }
+        }
+        else if (layer->type.ptr[0] == 'o') {
+            cute_tiled_object_t* output = layer->objects;
+            while (output) {
+                if (output->name.ptr != NULL && PNTR_STRCMP(output->name.ptr, name) == 0) {
+                    return output;
+                }
+                output = output->next;
+            }
+        }
+
+        layer = layer->next;
+    }
+
+    return NULL;
+}
+
+PNTR_TILED_API cute_tiled_tileset_t* pntr_tiled_tileset(cute_tiled_map_t* map, const char* name) {
+    if (map == NULL) {
+        return NULL;
+    }
+
+    cute_tiled_tileset_t* tileset = map->tilesets;
+    while (tileset) {
+        if (tileset->name.ptr != NULL && PNTR_STRCMP(tileset->name.ptr, name) == 0) {
+            return tileset;
+        }
+        tileset = tileset->next;
+    }
+
+    return NULL;
+}
+
+PNTR_TILED_API pntr_vector pntr_tiled_tile_in_rec(cute_tiled_map_t* map, cute_tiled_layer_t* layer, pntr_rectangle bounds, int gid, pntr_tiled_condition condition) {
+    if (map == NULL || layer == NULL) {
+        return (pntr_vector) { .x = -1, .y = -1 };
+    }
+
+    pntr_vector topleft = pntr_layer_tile_from_position(map, layer, bounds.x, bounds.y);
+    pntr_vector bottomright = pntr_layer_tile_from_position(map, layer, bounds.x + bounds.width, bounds.y + bounds.height);
+
+    for (int x = topleft.x; x <= bottomright.x; x++) {
+        for (int y = topleft.y; y <= bottomright.y; y++) {
+            switch (condition) {
+                case PNTR_TILED_CONDITION_EQUALS:
+                    if (pntr_layer_tile(layer, x, y) == gid) {
+                        return (pntr_vector) {.x = x, .y = y};
+                    }
+                    break;
+                case PNTR_TILED_CONDITION_NOT_EQUALS:
+                    int tile = pntr_layer_tile(layer, x, y);
+                    if (tile != 0 && tile != gid) {
+                        return (pntr_vector) {.x = x, .y = y};
+                    }
+                    break;
+            }
+        }
+    }
+
+    return (pntr_vector) { .x = -1, .y = -1 };
 }
 
 /**
