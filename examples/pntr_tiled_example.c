@@ -5,10 +5,9 @@
 #include "pntr_tiled.h"
 
 typedef struct AppData {
-    struct nk_context* ctx;
     cute_tiled_map_t* map;
-    int speed;
-    int x, y;
+    float speed;
+    float x, y;
 } AppData;
 
 bool Init(pntr_app* app) {
@@ -42,8 +41,8 @@ bool Update(pntr_app* app, pntr_image* screen) {
 
     // Mouse
     if (pntr_app_mouse_button_down(app, PNTR_APP_MOUSE_BUTTON_LEFT)) {
-        appData->x -= pntr_app_mouse_delta_x(app);// * pntr_app_delta_time(app) * app->fps;
-        appData->y -= pntr_app_mouse_delta_y(app);// * pntr_app_delta_time(app) * app->fps;
+        appData->x += pntr_app_mouse_delta_x(app);
+        appData->y += pntr_app_mouse_delta_y(app);
     }
 
     // Keep the map within screen bounds

@@ -240,10 +240,6 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, 
 #define CUTE_TILED_FCLOSE(fp) (void)fp
 #include PNTR_TILED_CUTE_TILED_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Internal pntr_tiled data for tiles within map tilesets.
  *
@@ -259,13 +255,17 @@ typedef struct pntr_tiled_tile {
     cute_tiled_tileset_t* tileset;
 } pntr_tiled_tile;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Finds the last slash in the given path.
  *
  * @internal
  * @private
  */
-char* _pntr_tiled_find_last_slash(const char* str) {
+static char* _pntr_tiled_find_last_slash(const char* str) {
     const char *slash     = PNTR_STRRCHR(str, '/');
     const char *backslash = PNTR_STRRCHR(str, '\\');
 
@@ -282,7 +282,7 @@ char* _pntr_tiled_find_last_slash(const char* str) {
  * @internal
  * @private
  */
-void _pntr_tiled_path_basedir(char* path) {
+static void _pntr_tiled_path_basedir(char* path) {
     char *last = NULL;
     if (!path || path[0] == '\0' || path[1] == '\0') {
         return;
@@ -296,7 +296,7 @@ void _pntr_tiled_path_basedir(char* path) {
     }
 }
 
-pntr_color _pntr_get_tiled_color(uint32_t hexValue) {
+static pntr_color _pntr_get_tiled_color(uint32_t hexValue) {
     return pntr_new_color(
         hexValue & 0xff,
         (hexValue >> 8) & 0xff,
@@ -310,7 +310,7 @@ pntr_color _pntr_get_tiled_color(uint32_t hexValue) {
  * @internal
  * @private
  */
-void _pntr_load_map_data(cute_tiled_map_t* map) {
+static void _pntr_load_map_data(cute_tiled_map_t* map) {
     if (map == NULL) {
         return;
     }
@@ -443,7 +443,7 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled(const char* fileName) {
  * @param image The string image to replace.
  * @param baseDir The base directory where the map file was loaded.
  */
-void _pntr_load_tiled_string_texture(cute_tiled_string_t* image, const char* baseDir) {
+static void _pntr_load_tiled_string_texture(cute_tiled_string_t* image, const char* baseDir) {
     if (image == NULL || image->ptr == NULL) {
         return;
     }
@@ -462,7 +462,7 @@ void _pntr_load_tiled_string_texture(cute_tiled_string_t* image, const char* bas
     }
 }
 
-void _pntr_load_tiled_layer_images(cute_tiled_layer_t* layer, const char* baseDir) {
+static void _pntr_load_tiled_layer_images(cute_tiled_layer_t* layer, const char* baseDir) {
     if (layer == NULL) {
         return;
     }
@@ -508,7 +508,7 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_memory(const unsigned char
     return map;
 }
 
-void _pntr_unload_tiled_layer_images(cute_tiled_layer_t* layer) {
+static void _pntr_unload_tiled_layer_images(cute_tiled_layer_t* layer) {
     if (layer == NULL) {
         return;
     }
