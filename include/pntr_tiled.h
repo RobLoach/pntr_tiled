@@ -488,7 +488,7 @@ static void _pntr_tiled_load_external_tilesets(cute_tiled_tileset_t* tileset, co
         PNTR_STRCAT(fullPath, tileset->source.ptr);
 
         int originalFirstgid = tileset->firstgid;
-        cute_tiled_tileset_t* oldNext = tileset->next;
+        cute_tiled_tileset_t* originalNext = tileset->next;
         
         unsigned int bytesRead;
         unsigned char* data = pntr_load_file(fullPath, &bytesRead);
@@ -497,7 +497,7 @@ static void _pntr_tiled_load_external_tilesets(cute_tiled_tileset_t* tileset, co
             if (tt != NULL) {
                 pntr_memory_copy((void*)tileset, (void*)tt, sizeof(cute_tiled_tileset_t));
                 tileset->firstgid = originalFirstgid;
-                tileset->next = oldNext;
+                tileset->next = originalNext;
             }
             pntr_unload_file(data);
         }
