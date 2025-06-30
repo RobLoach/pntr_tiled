@@ -146,6 +146,13 @@ PNTR_TILED_API pntr_vector pntr_layer_tile_from_position(cute_tiled_map_t* map, 
 PNTR_TILED_API cute_tiled_layer_t* pntr_tiled_layer_from_index(cute_tiled_map_t* map, int i);
 PNTR_TILED_API int pntr_tiled_layer_count(cute_tiled_map_t* map);
 
+/**
+ * Return the pntr_color for a tiled-color (like what is used in map background property)
+ * 
+ * @return the pntr_color
+ */
+PNTR_TILED_API pntr_color pntr_tiled_color(uint32_t color);
+
 #ifdef PNTR_ASSETSYS_API
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
 #endif  // PNTR_ASSETSYS_API
@@ -796,6 +803,18 @@ PNTR_TILED_API pntr_vector pntr_layer_tile_from_position(cute_tiled_map_t* map, 
         .x = (posX - layer->offsetx) / map->tilewidth,
         .y = (posY - layer->offsety) / map->tileheight
     };
+}
+
+
+// General helper to get a pntr_color from a tiled color
+PNTR_TILED_API pntr_color pntr_tiled_color(uint32_t color) {
+    if (color > 0xFFFFFF) {
+        // Has alpha channel
+        return pntr_new_color((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, (color >> 24) & 0xFF);
+    } else {
+        // No alpha, default to fully opaque
+        return pntr_new_color((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, 0xFF);
+    }
 }
 
 /**
