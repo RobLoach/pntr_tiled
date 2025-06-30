@@ -479,6 +479,31 @@ static void _pntr_load_tiled_layer_images(cute_tiled_layer_t* layer, const char*
     }
 }
 
+// this grabs external tilesets and injects them as if they are internal
+static void _pntr_tiled_load_external_tilesets(cute_tiled_tileset_t* tileset, const char* baseDir) {
+    if (tileset->source.ptr != NULL) {
+        char fullPath[PNTR_PATH_MAX];
+        fullPath[0] = '\0';
+        PNTR_STRCAT(fullPath, baseDir);
+        PNTR_STRCAT(fullPath, tileset->source.ptr);
+
+        int originalFirstgid = tileset->firstgid;
+        cute_tiled_tileset_t* oldNext = tileset->next;
+        
+        unsigned int bytesRead;
+        unsigned char* data = pntr_load_file(fullPath, &bytesRead);
+        if (data != NULL) {
+            cute_tiled_tileset_t* tt = cute_tiled_load_external_tileset_from_memory(data, bytesRead, NULL);
+            if (tt != NULL) {
+                pntr_memory_copy((void*)tileset, (void*)tt, sizeof(cute_tiled_tileset_t));
+                tileset->firstgid = originalFirstgid;
+                tileset->next = oldNext;
+            }
+            pntr_unload_file(data);
+        }
+    }
+}
+
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_memory(const unsigned char *fileData, unsigned int dataSize, const char* baseDir) {
     cute_tiled_map_t* map = cute_tiled_load_map_from_memory(fileData, (int)dataSize, 0);
     if (map == NULL) {
@@ -488,27 +513,7 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_memory(const unsigned char
     // Load all the tileset externaal tilesets & any tileset images.
     cute_tiled_tileset_t* tileset = map->tilesets;
     while (tileset) {
-        if (tileset->source.ptr != NULL) {
-            char fullPath[PNTR_PATH_MAX];
-            fullPath[0] = '\0';
-            PNTR_STRCAT(fullPath, baseDir);
-            PNTR_STRCAT(fullPath, tileset->source.ptr);
-
-            int originalFirstgid = tileset->firstgid;
-            cute_tiled_tileset_t* oldNext = tileset->next;
-            
-            unsigned int bytesRead;
-            unsigned char* data = pntr_load_file(fullPath, &bytesRead);
-            if (data != NULL) {
-                cute_tiled_tileset_t* tt = cute_tiled_load_external_tileset_from_memory(data, bytesRead, NULL);
-                if (tt != NULL) {
-                    pntr_memory_copy((void*)tileset, (void*)tt, sizeof(cute_tiled_tileset_t));
-                    tileset->firstgid = originalFirstgid;
-                    tileset->next = oldNext;
-                }
-                pntr_unload_file(data);
-            }
-        }
+        _pntr_tiled_load_external_tilesets(tileset, baseDir);
         _pntr_load_tiled_string_texture(&tileset->image, baseDir);
         if (tileset->transparentcolor != 0) {
             pntr_image_color_replace((pntr_image*)tileset->image.ptr, _pntr_get_tiled_color(tileset->transparentcolor), PNTR_BLANK);
