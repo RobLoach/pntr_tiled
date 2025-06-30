@@ -39,6 +39,7 @@
 #define PNTR_TILED_H_
 
 // cute_tiled
+#define CUTE_TILED_NO_EXTERNAL_TILESET_WARNING
 #ifndef PNTR_TILED_CUTE_TILED_H
 #define PNTR_TILED_CUTE_TILED_H "cute_tiled.h"
 #endif
@@ -495,6 +496,7 @@ static void _pntr_tiled_load_external_tilesets(cute_tiled_tileset_t* tileset, co
         if (data != NULL) {
             cute_tiled_tileset_t* tt = cute_tiled_load_external_tileset_from_memory(data, bytesRead, NULL);
             if (tt != NULL) {
+                // TODO: is this a memleak? I think it is. How do I do it better?
                 pntr_memory_copy((void*)tileset, (void*)tt, sizeof(cute_tiled_tileset_t));
                 tileset->firstgid = originalFirstgid;
                 tileset->next = originalNext;
