@@ -77,6 +77,7 @@ PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int 
 PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map, int gid, int posX, int posY, pntr_color tint);
 PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 PNTR_TILED_API void pntr_draw_tiled_layer_tilelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
+PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 
 /**
  * Retrieves an image representing the desired tile from the given global tile ID.
@@ -153,6 +154,13 @@ PNTR_TILED_API int pntr_tiled_layer_count(cute_tiled_map_t* map);
  * @return the pntr_color
  */
 PNTR_TILED_API pntr_color pntr_tiled_color(uint32_t color);
+
+/**
+ * Find an object by name on an object-layer
+ * 
+ * @return the cute_tiled_object
+ */ 
+PNTR_TILED_API cute_tiled_object_t* pntr_tiled_get_object(cute_tiled_layer_t* objects_layer, const char* name);
 
 #ifdef PNTR_ASSETSYS_API
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
@@ -661,6 +669,15 @@ PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled
     pntr_draw_image_tint(dst, image, posX, posY, tint);
 }
 
+PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint){
+    cute_tiled_object_t* object = layer->objects;
+    while (object != NULL) {
+        pntr_draw_tiled_tile(dst, map, object->gid, object->x + posX, object->y + posY, tint);
+        object = object->next;
+    }
+}
+
+
 PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
     if (dst == NULL || map == NULL || layer == NULL || tint.rgba.a == 0) {
         return;
@@ -683,8 +700,7 @@ PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map
                     pntr_draw_tiled_layer(dst, map, layer->layers, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
                 break;
                 case 'o': // "objectgroup"
-                    // TODO: Draw the objects?
-                    //DrawMapLayerObjects(layer->objects, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
+                    pntr_draw_tiled_layer_objectlayer(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
                 break;
                 case 'i': // "imagelayer"
                     pntr_draw_tiled_layer_imagelayer(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
@@ -844,6 +860,21 @@ PNTR_TILED_API pntr_color pntr_tiled_color(uint32_t color) {
         // No alpha, default to fully opaque
         return pntr_new_color((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, 0xFF);
     }
+}
+
+// Find an object by name on an object-layer
+PNTR_TILED_API cute_tiled_object_t* pntr_tiled_get_object(cute_tiled_layer_t* objects_layer, const char* name) {
+  if (objects_layer == NULL || objects_layer->objects == NULL) {
+    return NULL;
+  }
+  cute_tiled_object_t* current = objects_layer->objects;
+  while (current != NULL) {
+    if (current->name.ptr != NULL && strcmp(current->name.ptr, name) == 0) {
+      return current;
+    }
+    current = current->next;
+  }
+  return NULL;
 }
 
 /**
