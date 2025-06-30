@@ -14,7 +14,7 @@ bool Init(pntr_app* app) {
     AppData* appData = pntr_load_memory(sizeof(AppData));
     pntr_app_set_userdata(app, appData);
 
-    appData->map = pntr_load_tiled("resources/desert.json");
+    appData->map = pntr_load_tiled("examples/resources/desert.tmj");
     appData->x = 0;
     appData->y = 0;
     appData->speed = 200;
