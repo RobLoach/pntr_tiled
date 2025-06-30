@@ -51,6 +51,7 @@ int pntr_layer_tile(cute_tiled_layer_t* layer, int column, int row);
 void pntr_set_layer_tile(cute_tiled_layer_t* layer, int column, int row, int gid);
 pntr_vector pntr_layer_tile_from_position(cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY);
 cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
+pntr_color pntr_tiled_color(uint32_t color);
 ```
 
 ## License
