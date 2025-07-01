@@ -623,7 +623,7 @@ PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map,
 
 PNTR_TILED_API void pntr_draw_tiled_layer_tilelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
     int left, top;
-	for (int y = 0; y < layer->height; y++) {
+    for (int y = 0; y < layer->height; y++) {
         // Only act on tiles within y bounds.
         top = posY + y * map->tileheight;
         if (top > dst->height) {
@@ -633,7 +633,7 @@ PNTR_TILED_API void pntr_draw_tiled_layer_tilelayer(pntr_image* dst, cute_tiled_
             continue;
         }
 
-		for (int x = 0; x < layer->width; x++) {
+        for (int x = 0; x < layer->width; x++) {
             // Only act on tiles within x bounds.
             left = posX + x * map->tilewidth;
             if (left > dst->width) {
@@ -672,7 +672,7 @@ PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled
 PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint){
     cute_tiled_object_t* object = layer->objects;
     while (object != NULL) {
-        pntr_draw_tiled_tile(dst, map, object->gid, object->x + posX, object->y + posY, tint);
+        pntr_draw_tiled_tile(dst, map, object->gid, object->x + posX, object->y + posY -  map->tileheight, tint);
         object = object->next;
     }
 }
@@ -683,8 +683,8 @@ PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map
         return;
     }
 
-	while (layer) {
-		if (layer->type.ptr != NULL && layer->opacity > 0) {
+    while (layer) {
+        if (layer->type.ptr != NULL && layer->opacity > 0) {
             // Apply opacity to the layer
             pntr_color tintWithOpacity = tint;
             if (layer->opacity != 1) {
@@ -706,10 +706,10 @@ PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map
                     pntr_draw_tiled_layer_imagelayer(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
                 break;
             }
-		}
+        }
 
-		layer = layer->next;
-	}
+        layer = layer->next;
+    }
 }
 
 PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_color tint) {
