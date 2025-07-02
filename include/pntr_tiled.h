@@ -672,7 +672,9 @@ PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled
 PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint){
     cute_tiled_object_t* object = layer->objects;
     while (object != NULL) {
-        pntr_draw_tiled_tile(dst, map, object->gid, object->x + posX, object->y + posY -  map->tileheight, tint);
+        if (object->visible) {
+            pntr_draw_tiled_tile(dst, map, object->gid, object->x + posX, object->y + posY -  map->tileheight, tint);
+        }
         object = object->next;
     }
 }
@@ -684,7 +686,7 @@ PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map
     }
 
     while (layer) {
-        if (layer->type.ptr != NULL && layer->opacity > 0) {
+        if (layer->type.ptr != NULL && layer->opacity > 0 && layer->visible) {
             // Apply opacity to the layer
             pntr_color tintWithOpacity = tint;
             if (layer->opacity != 1) {
