@@ -4,20 +4,44 @@
 #define PNTR_TILED_IMPLEMENTATION
 #include "pntr_tiled.h"
 
+#define MIN(a,b) (a < b) ? a : b;
+#define MAX(a,b) (a > b) ? a : b;
+
+typedef enum {
+    DIRECTION_SOUTH,
+    DIRECTION_NORTH,
+    DIRECTION_EAST,
+    DIRECTION_WEST,
+} Direction;
+
 typedef struct AppData {
     cute_tiled_map_t* map;
     float speed;
-    float x, y;
+    cute_tiled_layer_t* objects;
+    cute_tiled_object_t* player;
+    Direction direction;
 } AppData;
 
 bool Init(pntr_app* app) {
     AppData* appData = pntr_load_memory(sizeof(AppData));
     pntr_app_set_userdata(app, appData);
 
-    appData->map = pntr_load_tiled("resources/desert.json");
-    appData->x = 0;
-    appData->y = 0;
     appData->speed = 200;
+
+    appData->map = pntr_load_tiled("examples/resources/desert.tmj");
+
+    // if you need more than 1 layer or object, use a single loop
+    appData->objects = pntr_tiled_layer(appData->map, "objects");
+    appData->player = pntr_tiled_get_object(appData->objects, "player");
+
+    
+    if (appData->objects == NULL) {
+        printf("no objects");
+    }
+
+    if (appData->player == NULL) {
+        printf("no player");
+    }
 
     return true;
 }
@@ -25,38 +49,36 @@ bool Init(pntr_app* app) {
 bool Update(pntr_app* app, pntr_image* screen) {
     AppData* appData = (AppData*)pntr_app_userdata(app);
 
+    bool walking = false;
+
     // Keyboard/Gamepad
     if (pntr_app_key_down(app, PNTR_APP_KEY_LEFT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_LEFT)) {
-        appData->x += appData->speed * pntr_app_delta_time(app);
+        appData->player->x -= appData->speed * pntr_app_delta_time(app);
+        walking=true;
+        appData->direction = DIRECTION_WEST;
     }
     else if (pntr_app_key_down(app, PNTR_APP_KEY_RIGHT) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_RIGHT)) {
-        appData->x -= appData->speed * pntr_app_delta_time(app);
+        appData->player->x += appData->speed * pntr_app_delta_time(app);
+        walking=true;
+        appData->direction = DIRECTION_EAST;
     }
     if (pntr_app_key_down(app, PNTR_APP_KEY_UP) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_UP)) {
-        appData->y += appData->speed * pntr_app_delta_time(app);
+        appData->player->y -= appData->speed * pntr_app_delta_time(app);
+        walking=true;
+        appData->direction = DIRECTION_NORTH;
     }
     else if (pntr_app_key_down(app, PNTR_APP_KEY_DOWN) || pntr_app_gamepad_button_down(app, 0, PNTR_APP_GAMEPAD_BUTTON_DOWN)) {
-        appData->y -= appData->speed * pntr_app_delta_time(app);
+        appData->player->y += appData->speed * pntr_app_delta_time(app);
+        walking=true;
+        appData->direction = DIRECTION_SOUTH;
     }
 
-    // Mouse
-    if (pntr_app_mouse_button_down(app, PNTR_APP_MOUSE_BUTTON_LEFT)) {
-        appData->x += pntr_app_mouse_delta_x(app);
-        appData->y += pntr_app_mouse_delta_y(app);
-    }
-
-    // Keep the map within screen bounds
-    if (appData->x > 0) {
-        appData->x = 0;
-    }
-    if (appData->y > 0) {
-        appData->y = 0;
-    }
-    if (appData->x - screen->width < -appData->map->width * appData->map->tilewidth) {
-        appData->x = -appData->map->width * appData->map->tilewidth + screen->width;
-    }
-    if (appData->y - screen->height < -appData->map->height * appData->map->tileheight) {
-        appData->y = -appData->map->height * appData->map->tileheight + screen->height;
+    // choose animated/still in correct direction
+    switch(appData->direction) {
+        case DIRECTION_SOUTH: appData->player->gid = walking ? 49 : 50; break;
+        case DIRECTION_NORTH: appData->player->gid = walking ? 59 : 60; break;
+        case DIRECTION_EAST: appData->player->gid = walking ? 69 : 70; break;  
+        case DIRECTION_WEST: appData->player->gid = walking ? 79 : 80; break;
     }
 
     // Update any map data.
@@ -65,8 +87,17 @@ bool Update(pntr_app* app, pntr_image* screen) {
     // Clear the screen
     pntr_clear_background(screen, PNTR_BLACK);
 
+    // camera: keep in bounds
+    int camera_x = MAX(0, appData->player->x - screen->width / 2);
+    int camera_y = MAX(0, appData->player->y - screen->height / 2);
+    camera_x = MIN(camera_x, (appData->map->width * appData->map->tilewidth) - screen->width);
+    camera_y = MIN(camera_y, (appData->map->height * appData->map->tileheight) - screen->height);
+
     // Draw the map
-    pntr_draw_tiled(screen, appData->map, appData->x, appData->y, PNTR_WHITE);
+    pntr_draw_tiled(screen, appData->map, -camera_x, -camera_y, PNTR_WHITE);
+
+    // once object-layer is setup, this should not be needed
+    // pntr_draw_tiled_tile(screen, appData->map, appData->player->gid, appData->player->x-camera_x, appData->player->y- camera_y-appData->map->tilewidth, PNTR_WHITE);
 
     return true;
 }
