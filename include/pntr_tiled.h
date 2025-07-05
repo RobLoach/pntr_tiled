@@ -669,13 +669,48 @@ PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled
     pntr_draw_image_tint(dst, image, posX, posY, tint);
 }
 
-PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint){
-    cute_tiled_object_t* object = layer->objects;
-    while (object != NULL) {
-        if (object->visible) {
-            pntr_draw_tiled_tile(dst, map, object->gid, object->x + posX, object->y + posY -  map->tileheight, tint);
+// Compare by Y (topdown)
+static int compare_y(const void* a, const void* b) {
+    const cute_tiled_object_t* oa = *(const cute_tiled_object_t**)a;
+    const cute_tiled_object_t* ob = *(const cute_tiled_object_t**)b;
+    return (oa->y > ob->y) - (oa->y < ob->y);
+}
+
+PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
+    // Determine draw order
+    const char* draworder = layer->draworder.ptr ? layer->draworder.ptr : "topdown";
+    int ysort = (layer->class_.ptr != NULL && PNTR_STRCMP(layer->class_.ptr, "ysort") == 0);
+    int use_ysort = ysort || PNTR_STRCMP(draworder, "topdown") == 0;
+
+    // Count visible objects
+    int count = 0;
+    for (cute_tiled_object_t* o = layer->objects; o; o = o->next){
+        if (o->visible) {
+            count++;
         }
-        object = object->next;
+    }
+    if (count == 0) {
+        return;
+    }
+
+    if (use_ysort) {
+        // Collect and sort by Y
+        cute_tiled_object_t** arr = pntr_load_memory(count * sizeof(*arr));
+        int i = 0;
+        for (cute_tiled_object_t* o = layer->objects; o; o = o->next){
+            if (o->visible) arr[i++] = o;
+        }
+        qsort(arr, count, sizeof(*arr), compare_y);
+        for (i = 0; i < count; i++) {
+            pntr_draw_tiled_tile(dst, map, arr[i]->gid, arr[i]->x + posX, arr[i]->y + posY - map->tileheight, tint);
+        }
+        pntr_unload_memory(arr);
+    } else { // "index"
+        for (cute_tiled_object_t* o = layer->objects; o; o = o->next){
+            if (o->visible){
+                pntr_draw_tiled_tile(dst, map, o->gid, o->x + posX, o->y + posY - map->tileheight, tint);
+            }
+        }
     }
 }
 
