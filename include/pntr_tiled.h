@@ -721,8 +721,8 @@ void static pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_
         }
 
         // Draw rotated image centered at (obj->x, obj->y)
-        int draw_x = (int)(obj->x + posX - rotated->width/2);
-        int draw_y = (int)(obj->y + posY - rotated->height/2);
+        int draw_x = (int)(obj->x + posX);
+        int draw_y = (int)(obj->y + posY);
         pntr_draw_image(dst, rotated, draw_x, draw_y);
 
         if (rotated != temp) {
@@ -759,8 +759,8 @@ void static pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_
         }
 
         // Draw rotated image centered at (obj->x, obj->y)
-        int draw_x = (int)(obj->x + posX - rotated->width/2 + min_x);
-        int draw_y = (int)(obj->y + posY - rotated->height/2 + min_y);
+        int draw_x = (int)(obj->x + posX + min_x);
+        int draw_y = (int)(obj->y + posY + min_y);
         pntr_draw_image(dst, rotated, draw_x, draw_y);
 
         if (rotated != temp) {
@@ -780,8 +780,7 @@ static int compare_y(const void* a, const void* b) {
 PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
     // Determine draw order
     const char* draworder = layer->draworder.ptr ? layer->draworder.ptr : "topdown";
-    int ysort = (layer->class_.ptr != NULL && PNTR_STRCMP(layer->class_.ptr, "ysort") == 0);
-    int use_ysort = ysort || PNTR_STRCMP(draworder, "topdown") == 0;
+    int use_ysort = (layer->class_.ptr != NULL && PNTR_STRCMP(layer->class_.ptr, "ysort") == 0);
 
     // Count visible objects
     int count = 0;
