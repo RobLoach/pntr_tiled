@@ -669,6 +669,107 @@ PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled
     pntr_draw_image_tint(dst, image, posX, posY, tint);
 }
 
+#ifndef CEILF
+#define CEILF(x) ((int)((x) + 0.999999f))
+#endif
+
+// Helper: get bounding box for polygon
+static void get_polygon_bounds(const float* vertices, int vert_count, float* out_min_x, float* out_min_y, float* out_max_x, float* out_max_y) {
+    float min_x = vertices[0], max_x = vertices[0];
+    float min_y = vertices[1], max_y = vertices[1];
+    for (int i = 1; i < vert_count; ++i) {
+        float x = vertices[i * 2];
+        float y = vertices[i * 2 + 1];
+        if (x < min_x) min_x = x;
+        if (x > max_x) max_x = x;
+        if (y < min_y) min_y = y;
+        if (y > max_y) max_y = y;
+    }
+    *out_min_x = min_x;
+    *out_min_y = min_y;
+    *out_max_x = max_x;
+    *out_max_y = max_y;
+}
+
+void static pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_object_t* obj, int posX, int posY, pntr_color tint) {
+    if (obj->gid != 0) {
+        pntr_draw_tiled_tile(dst, map, obj->gid, (int)(obj->x + posX), (int)(obj->y + posY - map->tileheight), tint);
+        return;
+    }
+
+    // Rectangle or Ellipse
+    if (obj->vert_count == 0) {
+        int shape_w = (int)CEILF(obj->width);
+        int shape_h = (int)CEILF(obj->height);
+
+        // Create temp image
+        pntr_image* temp = pntr_new_image(shape_w, shape_h);
+
+        if (obj->ellipse) {
+            // Draw ellipse centered in temp image
+            pntr_draw_ellipse_fill(temp, shape_w/2, shape_h/2, shape_w/2, shape_h/2, tint);
+        } else {
+            // Draw rectangle at (0,0)
+            pntr_draw_rectangle_fill(temp, 0, 0, shape_w, shape_h, tint);
+        }
+
+        // Rotate if needed
+        pntr_image* rotated = temp;
+        if (obj->rotation != 0.0f) {
+            rotated = pntr_image_rotate(temp, obj->rotation, PNTR_FILTER_BILINEAR);
+            pntr_unload_image(temp);
+        }
+
+        // Draw rotated image centered at (obj->x, obj->y)
+        int draw_x = (int)(obj->x + posX - rotated->width/2);
+        int draw_y = (int)(obj->y + posY - rotated->height/2);
+        pntr_draw_image(dst, rotated, draw_x, draw_y);
+
+        if (rotated != temp) {
+            pntr_unload_image(rotated);
+        }
+        return;
+    }
+
+    // Polygon
+    if (obj->vert_type == 1 && obj->vert_count > 0) {
+        // Compute bounding box of polygon
+        float min_x, min_y, max_x, max_y;
+        get_polygon_bounds(obj->vertices, obj->vert_count, &min_x, &min_y, &max_x, &max_y);
+        int shape_w = (int)CEILF(max_x - min_x);
+        int shape_h = (int)CEILF(max_y - min_y);
+
+        // Allocate and shift points to local (0,0) space
+        pntr_vector* points = malloc(sizeof(pntr_vector) * obj->vert_count);
+        for (int i = 0; i < obj->vert_count; ++i) {
+            points[i].x = obj->vertices[i * 2] - min_x;
+            points[i].y = obj->vertices[i * 2 + 1] - min_y;
+        }
+
+        // Create temp image
+        pntr_image* temp = pntr_new_image(shape_w, shape_h);
+        pntr_draw_polygon_fill(temp, points, obj->vert_count, tint);
+        pntr_unload_memory(points);
+
+        // Rotate if needed
+        pntr_image* rotated = temp;
+        if (obj->rotation != 0.0f) {
+            rotated = pntr_image_rotate(temp, obj->rotation, PNTR_FILTER_BILINEAR);
+            pntr_unload_image(temp);
+        }
+
+        // Draw rotated image centered at (obj->x, obj->y)
+        int draw_x = (int)(obj->x + posX - rotated->width/2 + min_x);
+        int draw_y = (int)(obj->y + posY - rotated->height/2 + min_y);
+        pntr_draw_image(dst, rotated, draw_x, draw_y);
+
+        if (rotated != temp) {
+            pntr_unload_image(rotated);
+        }
+        return;
+    }
+}
+
 // Compare by Y (topdown)
 static int compare_y(const void* a, const void* b) {
     const cute_tiled_object_t* oa = *(const cute_tiled_object_t**)a;
@@ -702,13 +803,13 @@ PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tile
         }
         qsort(arr, count, sizeof(*arr), compare_y);
         for (i = 0; i < count; i++) {
-            pntr_draw_tiled_tile(dst, map, arr[i]->gid, arr[i]->x + posX, arr[i]->y + posY - map->tileheight, tint);
+            pntr_tiled_draw_object(dst, map, arr[i], posX, posY, tint);
         }
         pntr_unload_memory(arr);
     } else { // "index"
         for (cute_tiled_object_t* o = layer->objects; o; o = o->next){
             if (o->visible){
-                pntr_draw_tiled_tile(dst, map, o->gid, o->x + posX, o->y + posY - map->tileheight, tint);
+                pntr_tiled_draw_object(dst, map, o, posX, posY, tint);
             }
         }
     }
