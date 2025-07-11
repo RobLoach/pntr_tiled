@@ -34,6 +34,12 @@ bool Init(pntr_app* app) {
     appData->objects = pntr_tiled_layer(appData->map, "objects");
     appData->player = pntr_tiled_get_object(appData->objects, "player");
 
+    // I added the player in differnt directions, off-screen, to figure out GIDs
+    cute_tiled_object_t* N = pntr_tiled_get_object(appData->objects, "N");
+    cute_tiled_object_t* S = pntr_tiled_get_object(appData->objects, "S");
+    cute_tiled_object_t* E = pntr_tiled_get_object(appData->objects, "E");
+    cute_tiled_object_t* W = pntr_tiled_get_object(appData->objects, "W");
+    printf("Player GIDs: N:%d S:%d E:%d W:%d\n", N->gid, S->gid, E->gid, W->gid);
     
     if (appData->objects == NULL) {
         printf("no objects");
@@ -74,11 +80,14 @@ bool Update(pntr_app* app, pntr_image* screen) {
     }
 
     // choose animated/still in correct direction
+    // the layout is still/walkA/walkB for each direction, and walkA is the animation
+    // Standing GIDs: N:52 S:49 E:58 W:55
+    // Walking GIDs: N:53 S:50 E:59 W:56
     switch(appData->direction) {
-        case DIRECTION_SOUTH: appData->player->gid = walking ? 49 : 50; break;
-        case DIRECTION_NORTH: appData->player->gid = walking ? 59 : 60; break;
-        case DIRECTION_EAST: appData->player->gid = walking ? 69 : 70; break;  
-        case DIRECTION_WEST: appData->player->gid = walking ? 79 : 80; break;
+        case DIRECTION_SOUTH: appData->player->gid = walking ? 50 : 49; break;
+        case DIRECTION_NORTH: appData->player->gid = walking ? 53 : 52; break;
+        case DIRECTION_EAST: appData->player->gid = walking ? 59 : 58; break;  
+        case DIRECTION_WEST: appData->player->gid = walking ? 56 : 55; break;
     }
 
     // Update any map data.

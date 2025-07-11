@@ -181,18 +181,6 @@
                  "y":96
                 }, 
                 {
-                 "gid":59,
-                 "height":32,
-                 "id":13,
-                 "name":"player",
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":32,
-                 "x":96,
-                 "y":192
-                }, 
-                {
                  "gid":31,
                  "height":32,
                  "id":14,
@@ -306,6 +294,66 @@
                  "width":0,
                  "x":768,
                  "y":384
+                }, 
+                {
+                 "gid":49,
+                 "height":32,
+                 "id":25,
+                 "name":"player",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":32,
+                 "x":96,
+                 "y":192
+                }, 
+                {
+                 "gid":49,
+                 "height":32,
+                 "id":32,
+                 "name":"S",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":32,
+                 "x":0,
+                 "y":0
+                }, 
+                {
+                 "gid":52,
+                 "height":32,
+                 "id":33,
+                 "name":"N",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":32,
+                 "x":32,
+                 "y":0
+                }, 
+                {
+                 "gid":55,
+                 "height":32,
+                 "id":34,
+                 "name":"W",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":32,
+                 "x":64,
+                 "y":0
+                }, 
+                {
+                 "gid":58,
+                 "height":32,
+                 "id":35,
+                 "name":"E",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":32,
+                 "x":96,
+                 "y":0
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -314,7 +362,7 @@
          "y":0
         }],
  "nextlayerid":15,
- "nextobjectid":24,
+ "nextobjectid":36,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",
