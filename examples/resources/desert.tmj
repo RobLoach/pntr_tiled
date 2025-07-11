@@ -163,6 +163,20 @@
          "y":0
         }, 
         {
+         "id":23,
+         "image":"logo.png",
+         "imageheight":128,
+         "imagewidth":128,
+         "name":"Image Layer 1",
+         "offsetx":672,
+         "offsety":448,
+         "opacity":1,
+         "type":"imagelayer",
+         "visible":true,
+         "x":0,
+         "y":0
+        }, 
+        {
          "data":[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -215,7 +229,7 @@
         }, 
         {
          "class":"ysort",
-         "color":"#ff40ff",
+         "color":"#fffb00",
          "draworder":"topdown",
          "id":13,
          "name":"objects",
@@ -289,8 +303,8 @@
                  "type":"",
                  "visible":true,
                  "width":64,
-                 "x":800,
-                 "y":256
+                 "x":736,
+                 "y":352
                 }, 
                 {
                  "gid":49,
@@ -358,8 +372,8 @@
          "x":0,
          "y":0
         }],
- "nextlayerid":22,
- "nextobjectid":41,
+ "nextlayerid":24,
+ "nextobjectid":42,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.11.2",
