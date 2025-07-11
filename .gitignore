@@ -2,3 +2,4 @@
 build
 *.tiled-session
 *.tiled-session.lock
+.DS_Store

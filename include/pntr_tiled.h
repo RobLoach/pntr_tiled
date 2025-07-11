@@ -39,6 +39,7 @@
 #define PNTR_TILED_H_
 
 // cute_tiled
+#define CUTE_TILED_NO_EXTERNAL_TILESET_WARNING
 #ifndef PNTR_TILED_CUTE_TILED_H
 #define PNTR_TILED_CUTE_TILED_H "cute_tiled.h"
 #endif
@@ -76,6 +77,7 @@ PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int 
 PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map, int gid, int posX, int posY, pntr_color tint);
 PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 PNTR_TILED_API void pntr_draw_tiled_layer_tilelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
+PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 
 /**
  * Retrieves an image representing the desired tile from the given global tile ID.
@@ -152,6 +154,13 @@ PNTR_TILED_API int pntr_tiled_layer_count(cute_tiled_map_t* map);
  * @return the pntr_color
  */
 PNTR_TILED_API pntr_color pntr_tiled_color(uint32_t color);
+
+/**
+ * Find an object by name on an object-layer
+ * 
+ * @return the cute_tiled_object
+ */ 
+PNTR_TILED_API cute_tiled_object_t* pntr_tiled_get_object(cute_tiled_layer_t* objects_layer, const char* name);
 
 #ifdef PNTR_ASSETSYS_API
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
@@ -486,15 +495,42 @@ static void _pntr_load_tiled_layer_images(cute_tiled_layer_t* layer, const char*
     }
 }
 
+// this grabs external tilesets and injects them as if they are internal
+static void _pntr_tiled_load_external_tilesets(cute_tiled_tileset_t* tileset, const char* baseDir) {
+    if (tileset->source.ptr != NULL) {
+        char fullPath[PNTR_PATH_MAX];
+        fullPath[0] = '\0';
+        PNTR_STRCAT(fullPath, baseDir);
+        PNTR_STRCAT(fullPath, tileset->source.ptr);
+
+        int originalFirstgid = tileset->firstgid;
+        cute_tiled_tileset_t* originalNext = tileset->next;
+        
+        unsigned int bytesRead;
+        unsigned char* data = pntr_load_file(fullPath, &bytesRead);
+        if (data != NULL) {
+            cute_tiled_tileset_t* tt = cute_tiled_load_external_tileset_from_memory(data, bytesRead, NULL);
+            if (tt != NULL) {
+                // TODO: is this a memleak? I think it is. How do I do it better?
+                pntr_memory_copy((void*)tileset, (void*)tt, sizeof(cute_tiled_tileset_t));
+                tileset->firstgid = originalFirstgid;
+                tileset->next = originalNext;
+            }
+            pntr_unload_file(data);
+        }
+    }
+}
+
 PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_memory(const unsigned char *fileData, unsigned int dataSize, const char* baseDir) {
     cute_tiled_map_t* map = cute_tiled_load_map_from_memory(fileData, (int)dataSize, 0);
     if (map == NULL) {
         return NULL;
     }
 
-    // Load all the tileset images.
+    // Load all the tileset externaal tilesets & any tileset images.
     cute_tiled_tileset_t* tileset = map->tilesets;
     while (tileset) {
+        _pntr_tiled_load_external_tilesets(tileset, baseDir);
         _pntr_load_tiled_string_texture(&tileset->image, baseDir);
         if (tileset->transparentcolor != 0) {
             pntr_image_color_replace((pntr_image*)tileset->image.ptr, _pntr_get_tiled_color(tileset->transparentcolor), PNTR_BLANK);
@@ -514,6 +550,7 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_memory(const unsigned char
 
     return map;
 }
+
 
 static void _pntr_unload_tiled_layer_images(cute_tiled_layer_t* layer) {
     if (layer == NULL) {
@@ -586,7 +623,7 @@ PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map,
 
 PNTR_TILED_API void pntr_draw_tiled_layer_tilelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
     int left, top;
-	for (int y = 0; y < layer->height; y++) {
+    for (int y = 0; y < layer->height; y++) {
         // Only act on tiles within y bounds.
         top = posY + y * map->tileheight;
         if (top > dst->height) {
@@ -596,7 +633,7 @@ PNTR_TILED_API void pntr_draw_tiled_layer_tilelayer(pntr_image* dst, cute_tiled_
             continue;
         }
 
-		for (int x = 0; x < layer->width; x++) {
+        for (int x = 0; x < layer->width; x++) {
             // Only act on tiles within x bounds.
             left = posX + x * map->tilewidth;
             if (left > dst->width) {
@@ -632,13 +669,159 @@ PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled
     pntr_draw_image_tint(dst, image, posX, posY, tint);
 }
 
+#ifndef CEILF
+#define CEILF(x) ((int)((x) + 0.999999f))
+#endif
+
+// Helper: get bounding box for polygon
+static void get_polygon_bounds(const float* vertices, int vert_count, float* out_min_x, float* out_min_y, float* out_max_x, float* out_max_y) {
+    float min_x = vertices[0], max_x = vertices[0];
+    float min_y = vertices[1], max_y = vertices[1];
+    for (int i = 1; i < vert_count; ++i) {
+        float x = vertices[i * 2];
+        float y = vertices[i * 2 + 1];
+        if (x < min_x) min_x = x;
+        if (x > max_x) max_x = x;
+        if (y < min_y) min_y = y;
+        if (y > max_y) max_y = y;
+    }
+    *out_min_x = min_x;
+    *out_min_y = min_y;
+    *out_max_x = max_x;
+    *out_max_y = max_y;
+}
+
+void static pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_object_t* obj, int posX, int posY, pntr_color tint) {
+    if (obj->gid != 0) {
+        pntr_draw_tiled_tile(dst, map, obj->gid, (int)(obj->x + posX), (int)(obj->y + posY - map->tileheight), tint);
+        return;
+    }
+
+    // Rectangle or Ellipse
+    if (obj->vert_count == 0) {
+        int shape_w = (int)CEILF(obj->width);
+        int shape_h = (int)CEILF(obj->height);
+
+        // Create temp image
+        pntr_image* temp = pntr_new_image(shape_w, shape_h);
+
+        if (obj->ellipse) {
+            // Draw ellipse centered in temp image
+            pntr_draw_ellipse_fill(temp, shape_w/2, shape_h/2, shape_w/2, shape_h/2, tint);
+        } else {
+            // Draw rectangle at (0,0)
+            pntr_draw_rectangle_fill(temp, 0, 0, shape_w, shape_h, tint);
+        }
+
+        // Rotate if needed
+        pntr_image* rotated = temp;
+        if (obj->rotation != 0.0f) {
+            rotated = pntr_image_rotate(temp, obj->rotation, PNTR_FILTER_BILINEAR);
+            pntr_unload_image(temp);
+        }
+
+        // Draw rotated image centered at (obj->x, obj->y)
+        int draw_x = (int)(obj->x + posX);
+        int draw_y = (int)(obj->y + posY);
+        pntr_draw_image(dst, rotated, draw_x, draw_y);
+
+        if (rotated != temp) {
+            pntr_unload_image(rotated);
+        }
+        return;
+    }
+
+    // Polygon
+    if (obj->vert_type == 1 && obj->vert_count > 0) {
+        // Compute bounding box of polygon
+        float min_x, min_y, max_x, max_y;
+        get_polygon_bounds(obj->vertices, obj->vert_count, &min_x, &min_y, &max_x, &max_y);
+        int shape_w = (int)CEILF(max_x - min_x);
+        int shape_h = (int)CEILF(max_y - min_y);
+
+        // Allocate and shift points to local (0,0) space
+        pntr_vector* points = malloc(sizeof(pntr_vector) * obj->vert_count);
+        for (int i = 0; i < obj->vert_count; ++i) {
+            points[i].x = obj->vertices[i * 2] - min_x;
+            points[i].y = obj->vertices[i * 2 + 1] - min_y;
+        }
+
+        // Create temp image
+        pntr_image* temp = pntr_new_image(shape_w, shape_h);
+        pntr_draw_polygon_fill(temp, points, obj->vert_count, tint);
+        pntr_unload_memory(points);
+
+        // Rotate if needed
+        pntr_image* rotated = temp;
+        if (obj->rotation != 0.0f) {
+            rotated = pntr_image_rotate(temp, obj->rotation, PNTR_FILTER_BILINEAR);
+            pntr_unload_image(temp);
+        }
+
+        // Draw rotated image centered at (obj->x, obj->y)
+        int draw_x = (int)(obj->x + posX + min_x);
+        int draw_y = (int)(obj->y + posY + min_y);
+        pntr_draw_image(dst, rotated, draw_x, draw_y);
+
+        if (rotated != temp) {
+            pntr_unload_image(rotated);
+        }
+        return;
+    }
+}
+
+// Compare by Y (topdown)
+static int compare_y(const void* a, const void* b) {
+    const cute_tiled_object_t* oa = *(const cute_tiled_object_t**)a;
+    const cute_tiled_object_t* ob = *(const cute_tiled_object_t**)b;
+    return (oa->y > ob->y) - (oa->y < ob->y);
+}
+
+PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
+    // Determine draw order
+    const char* draworder = layer->draworder.ptr ? layer->draworder.ptr : "topdown";
+    int use_ysort = (layer->class_.ptr != NULL && PNTR_STRCMP(layer->class_.ptr, "ysort") == 0);
+
+    // Count visible objects
+    int count = 0;
+    for (cute_tiled_object_t* o = layer->objects; o; o = o->next){
+        if (o->visible) {
+            count++;
+        }
+    }
+    if (count == 0) {
+        return;
+    }
+
+    if (use_ysort) {
+        // Collect and sort by Y
+        cute_tiled_object_t** arr = pntr_load_memory(count * sizeof(*arr));
+        int i = 0;
+        for (cute_tiled_object_t* o = layer->objects; o; o = o->next){
+            if (o->visible) arr[i++] = o;
+        }
+        qsort(arr, count, sizeof(*arr), compare_y);
+        for (i = 0; i < count; i++) {
+            pntr_tiled_draw_object(dst, map, arr[i], posX, posY, tint);
+        }
+        pntr_unload_memory(arr);
+    } else { // "index"
+        for (cute_tiled_object_t* o = layer->objects; o; o = o->next){
+            if (o->visible){
+                pntr_tiled_draw_object(dst, map, o, posX, posY, tint);
+            }
+        }
+    }
+}
+
+
 PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
     if (dst == NULL || map == NULL || layer == NULL || tint.rgba.a == 0) {
         return;
     }
 
-	while (layer) {
-		if (layer->type.ptr != NULL && layer->opacity > 0) {
+    while (layer) {
+        if (layer->type.ptr != NULL && layer->opacity > 0 && layer->visible) {
             // Apply opacity to the layer
             pntr_color tintWithOpacity = tint;
             if (layer->opacity != 1) {
@@ -654,17 +837,16 @@ PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map
                     pntr_draw_tiled_layer(dst, map, layer->layers, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
                 break;
                 case 'o': // "objectgroup"
-                    // TODO: Draw the objects?
-                    //DrawMapLayerObjects(layer->objects, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
+                    pntr_draw_tiled_layer_objectlayer(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
                 break;
                 case 'i': // "imagelayer"
                     pntr_draw_tiled_layer_imagelayer(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
                 break;
             }
-		}
+        }
 
-		layer = layer->next;
-	}
+        layer = layer->next;
+    }
 }
 
 PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_color tint) {
@@ -815,6 +997,21 @@ PNTR_TILED_API pntr_color pntr_tiled_color(uint32_t color) {
         // No alpha, default to fully opaque
         return pntr_new_color((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, 0xFF);
     }
+}
+
+// Find an object by name on an object-layer
+PNTR_TILED_API cute_tiled_object_t* pntr_tiled_get_object(cute_tiled_layer_t* objects_layer, const char* name) {
+  if (objects_layer == NULL || objects_layer->objects == NULL) {
+    return NULL;
+  }
+  cute_tiled_object_t* current = objects_layer->objects;
+  while (current != NULL) {
+    if (current->name.ptr != NULL && strcmp(current->name.ptr, name) == 0) {
+      return current;
+    }
+    current = current->next;
+  }
+  return NULL;
 }
 
 /**

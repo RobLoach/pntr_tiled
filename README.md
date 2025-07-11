@@ -29,7 +29,7 @@ int main() {
 - [x] Tile Layers
 - [x] Image Layers
 - [x] Group Layers
-- [ ] Object Layers
+- [x] Object Layers
 - [x] Animated Tiles
 - [x] Flipped/Rotated Tiles
 
