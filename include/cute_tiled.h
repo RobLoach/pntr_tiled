@@ -336,6 +336,10 @@ struct cute_tiled_layer_t
 	int repeaty;                         // Repeat image in the Y direction
 	int id;                              // ID of the layer.
 	cute_tiled_layer_t* next;            // Pointer to the next layer. NULL if final layer.
+
+	// used for image-layer
+	int imagewidth;
+	int imageheight;
 };
 
 struct cute_tiled_frame_t
@@ -2262,7 +2266,15 @@ cute_tiled_layer_t* cute_tiled_layers(cute_tiled_map_internal_t* m)
 		cute_tiled_expect(m, '"');
 		break;
 
-		default:
+	case 7796197983149768626: // image-layer imagewidth
+		cute_tiled_read_int(m, &layer->imagewidth);
+		break;
+
+	case 2114495263010514843: // image-layer imageheight
+		cute_tiled_read_int(m, &layer->imageheight);
+		break;
+
+	default:
 			CUTE_TILED_CHECK(0, "Unknown identifier found.");
 		}
 
