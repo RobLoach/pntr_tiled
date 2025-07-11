@@ -312,14 +312,6 @@ static void _pntr_tiled_path_basedir(char* path) {
     }
 }
 
-static pntr_color _pntr_get_tiled_color(uint32_t hexValue) {
-    return pntr_new_color(
-        hexValue & 0xff,
-        (hexValue >> 8) & 0xff,
-        (hexValue >> 16) & 0xff,
-        (hexValue >> 24) & 0xff);
-}
-
 /**
  * Perform any internal loading of map data.
  *
@@ -533,7 +525,7 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_memory(const unsigned char
         _pntr_tiled_load_external_tilesets(tileset, baseDir);
         _pntr_load_tiled_string_texture(&tileset->image, baseDir);
         if (tileset->transparentcolor != 0) {
-            pntr_image_color_replace((pntr_image*)tileset->image.ptr, _pntr_get_tiled_color(tileset->transparentcolor), PNTR_BLANK);
+            pntr_image_color_replace((pntr_image*)tileset->image.ptr, pntr_tiled_color(tileset->transparentcolor), PNTR_BLANK);
         }
         tileset = tileset->next;
     }
@@ -659,7 +651,7 @@ PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled
 
     if (layer->tintcolor != 0) {
         tint = pntr_color_alpha_blend(tint,
-            _pntr_get_tiled_color(layer->tintcolor)
+            pntr_tiled_color(layer->tintcolor)
         );
         tint.rgba.a *= layer->opacity;
     }
