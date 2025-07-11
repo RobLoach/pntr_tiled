@@ -35,11 +35,11 @@ bool Init(pntr_app* app) {
     appData->player = pntr_tiled_get_object(appData->objects, "player");
 
     // I added the player in differnt directions, off-screen, to figure out GIDs
-    cute_tiled_object_t* N = pntr_tiled_get_object(appData->objects, "N");
-    cute_tiled_object_t* S = pntr_tiled_get_object(appData->objects, "S");
-    cute_tiled_object_t* E = pntr_tiled_get_object(appData->objects, "E");
-    cute_tiled_object_t* W = pntr_tiled_get_object(appData->objects, "W");
-    printf("Player GIDs: N:%d S:%d E:%d W:%d\n", N->gid, S->gid, E->gid, W->gid);
+    // cute_tiled_object_t* N = pntr_tiled_get_object(appData->objects, "N");
+    // cute_tiled_object_t* S = pntr_tiled_get_object(appData->objects, "S");
+    // cute_tiled_object_t* E = pntr_tiled_get_object(appData->objects, "E");
+    // cute_tiled_object_t* W = pntr_tiled_get_object(appData->objects, "W");
+    // printf("Player GIDs: N:%d S:%d E:%d W:%d\n", N->gid, S->gid, E->gid, W->gid);
     
     if (appData->objects == NULL) {
         printf("no objects");

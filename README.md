@@ -43,15 +43,20 @@ void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int posX, int posY,
 void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map, int gid, int posX, int posY, pntr_color tint);
 void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 void pntr_draw_tiled_layer_tilelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
+void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 pntr_image* pntr_tiled_tile_image(cute_tiled_map_t* map, int gid);
 pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_color tint);
+pntr_image* pntr_gen_image_tiled_layer(cute_tiled_map_t* map, cute_tiled_layer_t* layer, pntr_color tint);
 void pntr_update_tiled(cute_tiled_map_t* map, float deltaTime);
 cute_tiled_layer_t* pntr_tiled_layer(cute_tiled_map_t* map, const char* name);
 int pntr_layer_tile(cute_tiled_layer_t* layer, int column, int row);
 void pntr_set_layer_tile(cute_tiled_layer_t* layer, int column, int row, int gid);
 pntr_vector pntr_layer_tile_from_position(cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY);
-cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
+cute_tiled_layer_t* pntr_tiled_layer_from_index(cute_tiled_map_t* map, int i);
+int pntr_tiled_layer_count(cute_tiled_map_t* map);
 pntr_color pntr_tiled_color(uint32_t color);
+cute_tiled_object_t* pntr_tiled_get_object(cute_tiled_layer_t* objects_layer, const char* name);
+cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, const char* fileName);
 ```
 
 ## License
