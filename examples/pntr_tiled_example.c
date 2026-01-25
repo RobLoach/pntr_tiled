@@ -40,7 +40,7 @@ bool Init(pntr_app* app) {
     // cute_tiled_object_t* E = pntr_tiled_get_object(appData->objects, "E");
     // cute_tiled_object_t* W = pntr_tiled_get_object(appData->objects, "W");
     // printf("Player GIDs: N:%d S:%d E:%d W:%d\n", N->gid, S->gid, E->gid, W->gid);
-    
+
     if (appData->objects == NULL) {
         printf("no objects");
     }
@@ -86,7 +86,7 @@ bool Update(pntr_app* app, pntr_image* screen) {
     switch(appData->direction) {
         case DIRECTION_SOUTH: appData->player->gid = walking ? 50 : 49; break;
         case DIRECTION_NORTH: appData->player->gid = walking ? 53 : 52; break;
-        case DIRECTION_EAST: appData->player->gid = walking ? 59 : 58; break;  
+        case DIRECTION_EAST: appData->player->gid = walking ? 59 : 58; break;
         case DIRECTION_WEST: appData->player->gid = walking ? 56 : 55; break;
     }
 
