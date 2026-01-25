@@ -150,16 +150,16 @@ PNTR_TILED_API int pntr_tiled_layer_count(cute_tiled_map_t* map);
 
 /**
  * Return the pntr_color for a tiled-color (like what is used in map background property)
- * 
+ *
  * @return the pntr_color
  */
 PNTR_TILED_API pntr_color pntr_tiled_color(uint32_t color);
 
 /**
  * Find an object by name on an object-layer
- * 
+ *
  * @return the cute_tiled_object
- */ 
+ */
 PNTR_TILED_API cute_tiled_object_t* pntr_tiled_get_object(cute_tiled_layer_t* objects_layer, const char* name);
 
 #ifdef PNTR_ASSETSYS_API
@@ -497,7 +497,7 @@ static void _pntr_tiled_load_external_tilesets(cute_tiled_tileset_t* tileset, co
 
         int originalFirstgid = tileset->firstgid;
         cute_tiled_tileset_t* originalNext = tileset->next;
-        
+
         unsigned int bytesRead;
         unsigned char* data = pntr_load_file(fullPath, &bytesRead);
         if (data != NULL) {
@@ -763,7 +763,7 @@ void static pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_
 }
 
 // Compare by Y (topdown)
-static int compare_y(const void* a, const void* b) {
+static int pntr_compare_y(const void* a, const void* b) {
     const cute_tiled_object_t* oa = *(const cute_tiled_object_t**)a;
     const cute_tiled_object_t* ob = *(const cute_tiled_object_t**)b;
     return (oa->y > ob->y) - (oa->y < ob->y);
@@ -785,6 +785,8 @@ PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tile
         return;
     }
 
+    pntr_color color = pntr_color_alpha_blend(tint, pntr_tiled_color(layer->tintcolor));
+
     if (use_ysort) {
         // Collect and sort by Y
         cute_tiled_object_t** arr = pntr_load_memory(count * sizeof(*arr));
@@ -792,20 +794,20 @@ PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tile
         for (cute_tiled_object_t* o = layer->objects; o; o = o->next){
             if (o->visible) arr[i++] = o;
         }
-        qsort(arr, count, sizeof(*arr), compare_y);
+        // TODO: Possibly avoid the use of stblib's qsort here?
+        qsort(arr, count, sizeof(*arr), pntr_compare_y);
         for (i = 0; i < count; i++) {
-            pntr_tiled_draw_object(dst, map, arr[i], posX, posY, tint);
+            pntr_tiled_draw_object(dst, map, arr[i], posX, posY, color);
         }
         pntr_unload_memory(arr);
     } else { // "index"
         for (cute_tiled_object_t* o = layer->objects; o; o = o->next){
-            if (o->visible){
-                pntr_tiled_draw_object(dst, map, o, posX, posY, tint);
+            if (o->visible) {
+                pntr_tiled_draw_object(dst, map, o, posX, posY, color);
             }
         }
     }
 }
-
 
 PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
     if (dst == NULL || map == NULL || layer == NULL || tint.rgba.a == 0) {
