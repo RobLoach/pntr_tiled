@@ -29,6 +29,13 @@ bool Init(pntr_app* app) {
     appData->speed = 200;
 
     appData->map = pntr_load_tiled("examples/resources/desert.tmj");
+    if (!appData->map) {
+        appData->map = pntr_load_tiled("resources/desert.t2mj");
+        if (!appData->map) {
+            pntr_app_log(PNTR_APP_LOG_ERROR, "Failed to load resources/desert.tmj");
+            return false;
+        }
+    }
 
     // if you need more than 1 layer or object, use a single loop
     appData->objects = pntr_tiled_layer(appData->map, "objects");
