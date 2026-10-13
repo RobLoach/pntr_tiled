@@ -2,7 +2,7 @@
 include(FetchContent)
 FetchContent_Declare(
     pntr
-    GIT_REPOSITORY https://github.com/robloach/pntr.git
-    GIT_TAG a47fe16
+    URL https://github.com/RobLoach/pntr/archive/refs/tags/v0.1.0.zip
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(pntr)
