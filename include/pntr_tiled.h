@@ -725,7 +725,68 @@ PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map,
     }
 }
 
+/**
+ * Draw a single chunk of an infinite map's tile layer.
+ *
+ * @internal
+ * @private
+ */
+static void _pntr_draw_tiled_chunk(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_chunk_t* chunk, int posX, int posY, pntr_color tint) {
+    if (chunk->data == NULL) {
+        return;
+    }
+
+    // A chunk's x/y is its position in tiles.
+    posX += chunk->x * map->tilewidth;
+    posY += chunk->y * map->tileheight;
+
+    int left, top;
+    for (int y = 0; y < chunk->height; y++) {
+        // Only act on tiles within y bounds.
+        top = posY + y * map->tileheight;
+        if (top > dst->height) {
+            break;
+        }
+        if (top + map->tileheight < 0) {
+            continue;
+        }
+
+        for (int x = 0; x < chunk->width; x++) {
+            // Only act on tiles within x bounds.
+            left = posX + x * map->tilewidth;
+            if (left > dst->width) {
+                break;
+            }
+            if (left + map->tilewidth < 0) {
+                continue;
+            }
+
+            int index = y * chunk->width + x;
+            if (index >= chunk->data_count) {
+                return;
+            }
+
+            // Draw the tile from the gid.
+            pntr_draw_tiled_tile(dst, map, chunk->data[index], left, top, tint);
+        }
+    }
+}
+
 PNTR_TILED_API void pntr_draw_tiled_layer_tilelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
+    // An infinite map has no single tile array. Its tiles live in a list of chunks instead.
+    if (layer->chunks != NULL) {
+        cute_tiled_chunk_t* chunk = layer->chunks;
+        while (chunk) {
+            _pntr_draw_tiled_chunk(dst, map, chunk, posX, posY, tint);
+            chunk = chunk->next;
+        }
+        return;
+    }
+
+    if (layer->data == NULL) {
+        return;
+    }
+
     int left, top;
     for (int y = 0; y < layer->height; y++) {
         // Only act on tiles within y bounds.
@@ -747,9 +808,14 @@ PNTR_TILED_API void pntr_draw_tiled_layer_tilelayer(pntr_image* dst, cute_tiled_
                 continue;
             }
 
+            int index = y * layer->width + x;
+            if (index >= layer->data_count) {
+                return;
+            }
+
             // Draw the tile from the gid.
             pntr_draw_tiled_tile(dst, map,
-                layer->data[y * layer->width + x],
+                layer->data[index],
                 left, top,
                 tint
             );
@@ -987,21 +1053,94 @@ PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map
     }
 }
 
+/**
+ * Collect the bounding box, in tiles, of every chunk of the given layers and their children.
+ *
+ * @internal
+ * @private
+ */
+static void _pntr_tiled_chunk_bounds(cute_tiled_layer_t* layer, int* minX, int* minY, int* maxX, int* maxY, int* found) {
+    while (layer) {
+        if (layer->layers != NULL) {
+            _pntr_tiled_chunk_bounds(layer->layers, minX, minY, maxX, maxY, found);
+        }
+
+        cute_tiled_chunk_t* chunk = layer->chunks;
+        while (chunk) {
+            if (chunk->width > 0 && chunk->height > 0) {
+                if (*found == 0) {
+                    *minX = chunk->x;
+                    *minY = chunk->y;
+                    *maxX = chunk->x + chunk->width;
+                    *maxY = chunk->y + chunk->height;
+                    *found = 1;
+                }
+                else {
+                    if (chunk->x < *minX) *minX = chunk->x;
+                    if (chunk->y < *minY) *minY = chunk->y;
+                    if (chunk->x + chunk->width > *maxX) *maxX = chunk->x + chunk->width;
+                    if (chunk->y + chunk->height > *maxY) *maxY = chunk->y + chunk->height;
+                }
+            }
+
+            chunk = chunk->next;
+        }
+
+        layer = layer->next;
+    }
+}
+
+/**
+ * Work out how large an image of the given map has to be, and where the map's origin sits
+ * within it.
+ *
+ * @details An infinite map is sized and positioned from the bounding box of all of its chunks,
+ * since its chunks can sit at negative tile coordinates. Every other map is the size of its own
+ * tile grid, with its origin at the top left.
+ *
+ * @internal
+ * @private
+ */
+static void _pntr_tiled_image_bounds(cute_tiled_map_t* map, int* width, int* height, int* posX, int* posY) {
+    *width = map->tilewidth * map->width;
+    *height = map->tileheight * map->height;
+    *posX = 0;
+    *posY = 0;
+
+    if (map->infinite == 0) {
+        return;
+    }
+
+    int minX = 0, minY = 0, maxX = 0, maxY = 0, found = 0;
+    _pntr_tiled_chunk_bounds(map->layers, &minX, &minY, &maxX, &maxY, &found);
+    if (found == 0) {
+        return;
+    }
+
+    *width = (maxX - minX) * map->tilewidth;
+    *height = (maxY - minY) * map->tileheight;
+    *posX = -minX * map->tilewidth;
+    *posY = -minY * map->tileheight;
+}
+
 PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_color tint) {
     if (map == NULL) {
         return pntr_set_error(PNTR_ERROR_INVALID_ARGS);
     }
 
+    int width, height, posX, posY;
+    _pntr_tiled_image_bounds(map, &width, &height, &posX, &posY);
+
     // cute_tiled keeps the background color as the raw hex from the file (#RRGGBB or
     // #AARRGGBB), which pntr_tiled_color() decodes. A map with no background color is left
     // transparent.
     pntr_color background = map->backgroundcolor != 0 ? pntr_tiled_color(map->backgroundcolor) : PNTR_BLANK;
-    pntr_image* output = pntr_gen_image_color(map->tilewidth * map->width, map->tileheight * map->height, background);
+    pntr_image* output = pntr_gen_image_color(width, height, background);
     if (output == NULL) {
         return NULL;
     }
 
-    pntr_draw_tiled(output, map, 0, 0, tint);
+    pntr_draw_tiled(output, map, posX, posY, tint);
     return output;
 }
 
@@ -1010,12 +1149,17 @@ PNTR_TILED_API pntr_image* pntr_gen_image_tiled_layer(cute_tiled_map_t* map, cut
         return pntr_set_error(PNTR_ERROR_INVALID_ARGS);
     }
 
-    pntr_image* output = pntr_gen_image_color(map->tilewidth * map->width, map->tileheight * map->height, PNTR_BLANK);
+    // The whole map's bounds are used, rather than just this layer's, so that the images of
+    // each layer of a map line up with each other.
+    int width, height, posX, posY;
+    _pntr_tiled_image_bounds(map, &width, &height, &posX, &posY);
+
+    pntr_image* output = pntr_gen_image_color(width, height, PNTR_BLANK);
     if (output == NULL) {
         return NULL;
     }
 
-    pntr_draw_tiled_layer(output, map, layer, 0, 0, tint);
+    pntr_draw_tiled_layer(output, map, layer, posX, posY, tint);
     return output;
 }
 
@@ -1085,8 +1229,57 @@ PNTR_TILED_API int pntr_tiled_layer_count(cute_tiled_map_t* map) {
     return count;
 }
 
+/**
+ * Find the position of the given tile within an infinite map layer's chunks.
+ *
+ * @param column The x coordinate of the tile, in the map's own tile coordinates, which can be
+ * negative for an infinite map.
+ * @param row The y coordinate of the tile.
+ * @param index Where to put the index of the tile within the chunk that holds it.
+ *
+ * @return The chunk that holds the tile, or NULL when no chunk covers it.
+ *
+ * @internal
+ * @private
+ */
+static cute_tiled_chunk_t* _pntr_tiled_find_chunk(cute_tiled_layer_t* layer, int column, int row, int* index) {
+    cute_tiled_chunk_t* chunk = layer->chunks;
+    while (chunk) {
+        if (chunk->data != NULL &&
+                column >= chunk->x && column < chunk->x + chunk->width &&
+                row >= chunk->y && row < chunk->y + chunk->height) {
+            int chunkIndex = (row - chunk->y) * chunk->width + (column - chunk->x);
+            if (chunkIndex >= 0 && chunkIndex < chunk->data_count) {
+                *index = chunkIndex;
+                return chunk;
+            }
+
+            return NULL;
+        }
+
+        chunk = chunk->next;
+    }
+
+    return NULL;
+}
+
 PNTR_TILED_API int pntr_layer_tile(cute_tiled_layer_t* layer, int column, int row) {
-    if (layer == NULL || layer->data == NULL) {
+    if (layer == NULL) {
+        return 0;
+    }
+
+    // An infinite map keeps its tiles in chunks, which can sit at negative coordinates.
+    if (layer->chunks != NULL) {
+        int index;
+        cute_tiled_chunk_t* chunk = _pntr_tiled_find_chunk(layer, column, row, &index);
+        if (chunk == NULL) {
+            return 0;
+        }
+
+        return cute_tiled_unset_flags(chunk->data[index]);
+    }
+
+    if (layer->data == NULL) {
         return 0;
     }
 
@@ -1100,7 +1293,23 @@ PNTR_TILED_API int pntr_layer_tile(cute_tiled_layer_t* layer, int column, int ro
 }
 
 PNTR_TILED_API void pntr_set_layer_tile(cute_tiled_layer_t* layer, int column, int row, int gid) {
-    if (layer == NULL || layer->data == NULL || gid < 0) {
+    if (layer == NULL || gid < 0) {
+        return;
+    }
+
+    // An infinite map keeps its tiles in chunks, which can sit at negative coordinates. A tile
+    // that no chunk covers cannot be set, since that would mean growing the map.
+    if (layer->chunks != NULL) {
+        int index;
+        cute_tiled_chunk_t* chunk = _pntr_tiled_find_chunk(layer, column, row, &index);
+        if (chunk != NULL) {
+            chunk->data[index] = gid;
+        }
+
+        return;
+    }
+
+    if (layer->data == NULL) {
         return;
     }
 

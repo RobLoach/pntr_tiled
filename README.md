@@ -32,6 +32,7 @@ int main() {
 - [x] Object Layers
 - [x] Animated Tiles
 - [x] Flipped/Rotated Tiles
+- [x] Infinite Maps
 
 ### API
 

@@ -248,6 +248,65 @@ int main() {
         pntr_unload_tiled(map);
     }
 
+    // An infinite map keeps its tiles in chunks instead of a single array.
+    {
+        cute_tiled_map_t* map = pntr_load_tiled("resources/pntr_tiled_test_infinite.tmj");
+        assert(map != NULL);
+        assert(map->infinite);
+
+        cute_tiled_layer_t* layer = pntr_tiled_layer(map, "Infinite");
+        assert(layer != NULL);
+        assert(layer->data == NULL);
+        assert(layer->chunks != NULL);
+
+        int chunkCount = 0;
+        for (cute_tiled_chunk_t* chunk = layer->chunks; chunk; chunk = chunk->next) {
+            chunkCount++;
+        }
+        assert(chunkCount == 2);
+
+        // pntr_gen_image_tiled() sizes an infinite map from the bounding box of its chunks.
+        // The chunks span tile columns -16 through 31 and tile rows 0 through 15.
+        {
+            pntr_image* actual = pntr_gen_image_tiled(map, PNTR_WHITE);
+            assert(actual != NULL);
+            assert(actual->width == 48 * 32);
+            assert(actual->height == 16 * 32);
+            assert(pntr_save_image(actual, "actual_infinite.png"));
+
+            pntr_image* expected = pntr_load_image("resources/expected_infinite.png");
+            assert(expected != NULL);
+            PNTR_ASSERT_IMAGE_EQUALS(actual, expected);
+
+            pntr_unload_image(expected);
+            pntr_unload_image(actual);
+        }
+
+        // pntr_layer_tile() reads through to the chunk that holds the tile, including chunks
+        // at negative coordinates.
+        assert(pntr_layer_tile(layer, -3, 0) == 1);
+        assert(pntr_layer_tile(layer, -2, 0) == 30);
+        assert(pntr_layer_tile(layer, -1, 2) == 30);
+        assert(pntr_layer_tile(layer, 16, 0) == 10);
+        assert(pntr_layer_tile(layer, 17, 1) == 30);
+
+        // An empty tile inside a chunk, and anything no chunk covers, is 0.
+        assert(pntr_layer_tile(layer, -3, 8) == 0);
+        assert(pntr_layer_tile(layer, 0, 0) == 0);
+        assert(pntr_layer_tile(layer, -100, 0) == 0);
+        assert(pntr_layer_tile(layer, 100, 100) == 0);
+
+        // pntr_set_layer_tile()
+        pntr_set_layer_tile(layer, -3, 0, 34);
+        assert(pntr_layer_tile(layer, -3, 0) == 34);
+
+        // A tile that no chunk covers cannot be set, since that would grow the map.
+        pntr_set_layer_tile(layer, 0, 0, 34);
+        assert(pntr_layer_tile(layer, 0, 0) == 0);
+
+        pntr_unload_tiled(map);
+    }
+
     // The map's backgroundcolor is the raw file hex, not 0xRRGGBBAA.
     {
         cute_tiled_map_t* map = pntr_load_tiled("resources/pntr_tiled_test_background.tmj");
