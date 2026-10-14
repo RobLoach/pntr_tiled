@@ -958,17 +958,51 @@ static void pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_
 }
 
 // Compare by Y (topdown)
+/**
+ * An object paired with its position in the file, used to order a layer's objects.
+ *
+ * @internal
+ */
+typedef struct pntr_tiled_object_order {
+    cute_tiled_object_t* object;
+    int index;
+} pntr_tiled_object_order;
+
+/**
+ * Order two objects top to bottom, breaking a tie by file order.
+ *
+ * The tie break matters: PNTR_TILED_QSORT() is not required to be stable, so without it
+ * two objects sharing a y would be drawn in an unspecified order and the same map could
+ * render differently from one run to the next.
+ *
+ * @internal
+ */
 static int pntr_compare_y(const void* a, const void* b) {
-    const cute_tiled_object_t* oa = *(const cute_tiled_object_t**)a;
-    const cute_tiled_object_t* ob = *(const cute_tiled_object_t**)b;
-    return (oa->y > ob->y) - (oa->y < ob->y);
+    const pntr_tiled_object_order* oa = (const pntr_tiled_object_order*)a;
+    const pntr_tiled_object_order* ob = (const pntr_tiled_object_order*)b;
+
+    if (oa->object->y != ob->object->y) {
+        return (oa->object->y > ob->object->y) - (oa->object->y < ob->object->y);
+    }
+
+    return (oa->index > ob->index) - (oa->index < ob->index);
 }
 
 PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
-    // Determine draw order.
-    // TODO: Object layer: Honour the layer's draworder of "topdown" or "index". Objects are
-    // currently always drawn in file order unless the layer's class is "ysort".
-    int use_ysort = (layer->class_.ptr != NULL && PNTR_STRCMP(layer->class_.ptr, "ysort") == 0);
+    // Tiled's draworder decides this: "topdown" sorts the objects by their y position, and
+    // "index" keeps the order they appear in the file. Tiled writes "topdown" by default and
+    // omits the attribute in that case, so an absent draworder means topdown, not index.
+    //
+    // A layer class of "ysort" still forces the top down sort. That was this library's own
+    // convention before draworder was read at all, so a map relying on it keeps working even
+    // if its layer also says "index".
+    int use_ysort = 1;
+    if (layer->draworder.ptr != NULL && PNTR_STRCMP(layer->draworder.ptr, "index") == 0) {
+        use_ysort = 0;
+    }
+    if (layer->class_.ptr != NULL && PNTR_STRCMP(layer->class_.ptr, "ysort") == 0) {
+        use_ysort = 1;
+    }
 
     // Count visible objects
     int count = 0;
@@ -988,29 +1022,32 @@ PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tile
         shapeColor = pntr_color_tint(tint, pntr_tiled_color(layer->tintcolor));
     }
 
-    if (use_ysort) {
-        // Collect and sort by Y
-        cute_tiled_object_t** arr = (cute_tiled_object_t**)pntr_load_memory((size_t)count * sizeof(*arr));
-        if (arr == NULL) {
-            return;
-        }
+    pntr_tiled_object_order* order = (pntr_tiled_object_order*)pntr_load_memory((size_t)count * sizeof(*order));
+    if (order == NULL) {
+        return;
+    }
 
-        int i = 0;
-        for (cute_tiled_object_t* o = layer->objects; o; o = o->next){
-            if (o->visible) arr[i++] = o;
-        }
-        PNTR_TILED_QSORT(arr, (size_t)count, sizeof(*arr), pntr_compare_y);
-        for (i = 0; i < count; i++) {
-            pntr_tiled_draw_object(dst, map, arr[i], posX, posY, tint, shapeColor);
-        }
-        pntr_unload_memory(arr);
-    } else { // "index"
-        for (cute_tiled_object_t* o = layer->objects; o; o = o->next){
-            if (o->visible) {
-                pntr_tiled_draw_object(dst, map, o, posX, posY, tint, shapeColor);
-            }
+    // cute_tiled hands back a layer's objects in reverse file order, so the array is filled
+    // from the back to put them in the order the file declares them. That order is what
+    // "index" means, and it is also the tie break for the top down sort.
+    int i = count;
+    for (cute_tiled_object_t* o = layer->objects; o; o = o->next) {
+        if (o->visible) {
+            i--;
+            order[i].object = o;
+            order[i].index = i;
         }
     }
+
+    if (use_ysort) {
+        PNTR_TILED_QSORT(order, (size_t)count, sizeof(*order), pntr_compare_y);
+    }
+
+    for (i = 0; i < count; i++) {
+        pntr_tiled_draw_object(dst, map, order[i].object, posX, posY, tint, shapeColor);
+    }
+
+    pntr_unload_memory(order);
 }
 
 PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
