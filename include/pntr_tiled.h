@@ -12,6 +12,7 @@
 *       There are a few cute_tiled_map_t properties that are used for pntr_tiled use:
 *       - tiledversion: Used for an array of pntr_image* subimages representing each tile source in the map.
 *       - nextlayerid: Used to track the current animation time in milliseconds.
+*       - nextobjectid: Used to track how many tiles are in the tiledversion array.
 *
 *   LICENSE: zlib/libpng
 *
@@ -83,9 +84,11 @@ PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tile
  * Retrieves an image representing the desired tile from the given global tile ID.
  *
  * @param map The map to get the tile from.
- * @param gid The global tile ID for the tile. This cannot exceed the number of tiles in the map.
+ * @param gid The global tile ID for the tile.
  *
- * @return A subimage from the tileset for the given tile.
+ * @return A subimage from the tileset for the given tile, or NULL when the gid is out of range
+ * or the tile has no image. Tiles have no image when their tileset has no tile grid, such as a
+ * "collection of images" tileset, or when the tileset image failed to load.
  */
 PNTR_TILED_API pntr_image* pntr_tiled_tile_image(cute_tiled_map_t* map, int gid);
 
@@ -330,23 +333,47 @@ static void _pntr_load_map_data(cute_tiled_map_t* map) {
     int tileCount = 0;
     cute_tiled_tileset_t* tileset = map->tilesets;
     while (tileset) {
-        tileCount += tileset->tilecount;
+        if (tileset->tilecount > 0) {
+            tileCount += tileset->tilecount;
+        }
         tileset = tileset->next;
     }
 
+    map->tiledversion.ptr = NULL;
+    map->nextobjectid = 0;
+    if (tileCount <= 0) {
+        return;
+    }
+
     // Prepare the entire tiles set
-    pntr_tiled_tile* tiles = pntr_load_memory(sizeof(pntr_tiled_tile) * (size_t)tileCount);
+    pntr_tiled_tile* tiles = (pntr_tiled_tile*)pntr_load_memory(sizeof(pntr_tiled_tile) * (size_t)tileCount);
+    if (tiles == NULL) {
+        return;
+    }
+
+    // Start every tile blank. A blank tile has no image data, which makes both
+    // pntr_tiled_tile_image() and pntr_draw_tiled_tile() a no-op for it, so any tile that
+    // can't be built below is simply never drawn.
+    PNTR_MEMSET((void*)tiles, 0, sizeof(pntr_tiled_tile) * (size_t)tileCount);
 
     // Build all the tiles from each tileset.
     tileset = map->tilesets;
     while (tileset) {
+        // A tileset needs a tile grid and a loaded image before any subimages can be cut out
+        // of it. A "collection of images" tileset has no shared image and reports
+        // "columns": 0, and a tileset whose image failed to load has a NULL image. Both leave
+        // their tiles blank rather than dividing by zero or copying from NULL.
+        if (tileset->columns <= 0 || tileset->tilewidth <= 0 || tileset->tileheight <= 0 || tileset->image.ptr == NULL) {
+            tileset = tileset->next;
+            continue;
+        }
+
         for (int i = 0; i < tileset->tilecount; i++) {
-            // Calculate the gid.
+            // Calculate the gid, skipping anything that would land outside the tiles array.
             int gid = tileset->firstgid + i - 1;
-            pntr_tiled_tile* tile = tiles + gid;
-            tile->tileset = tileset;
-            tile->descriptor = NULL;
-            tile->animationDuration = 0;
+            if (gid < 0 || gid >= tileCount) {
+                continue;
+            }
 
             // Figure out where the tile appears in the tileset.
             int tileX = i % tileset->columns;
@@ -360,8 +387,18 @@ static void _pntr_load_map_data(cute_tiled_map_t* map) {
                 .height = tileset->tileheight
             };
 
-            // Build the subimage as part of the tiles array.
+            // Build the subimage as part of the tiles array. This returns NULL when the tile
+            // sits outside of the tileset image, which leaves the tile blank.
             pntr_image* temporaryTile = pntr_image_subimage((pntr_image*)tileset->image.ptr, srcRect.x, srcRect.y, srcRect.width, srcRect.height);
+            if (temporaryTile == NULL) {
+                continue;
+            }
+
+            pntr_tiled_tile* tile = tiles + gid;
+            tile->tileset = tileset;
+            tile->descriptor = NULL;
+            tile->animationDuration = 0;
+
             pntr_image* tileImage = &tile->image;
             pntr_memory_copy((void*)tileImage, (void*)temporaryTile, sizeof(pntr_image));
             pntr_unload_image(temporaryTile);
@@ -388,20 +425,23 @@ static void _pntr_load_map_data(cute_tiled_map_t* map) {
     }
 
     map->tiledversion.ptr = (const char*)tiles;
+    map->nextobjectid = tileCount;
 }
 
 PNTR_TILED_API pntr_image* pntr_tiled_tile_image(cute_tiled_map_t* map, int gid) {
-    if (gid <= 0) {
+    // The gid is a one-based index into the tiles array, so anything past the tile count would
+    // read out of bounds.
+    if (map == NULL || map->tiledversion.ptr == NULL || gid <= 0 || gid > map->nextobjectid) {
         return NULL;
     }
 
-    pntr_tiled_tile* tile = (pntr_tiled_tile*)map->tiledversion.ptr;
-    tile = tile + gid - 1;
+    pntr_tiled_tile* tiles = (pntr_tiled_tile*)map->tiledversion.ptr;
+    pntr_tiled_tile* tile = tiles + gid - 1;
 
     // Process any descriptive tile properties.
     if (tile->descriptor != NULL) {
         // Animation
-        if (tile->descriptor->frame_count > 0) {
+        if (tile->descriptor->frame_count > 0 && tile->animationDuration > 0) {
             // Find the active frame.
             int desiredMilliseconds = map->nextlayerid % tile->animationDuration;
             int desiredFrame = 0;
@@ -416,9 +456,16 @@ PNTR_TILED_API pntr_image* pntr_tiled_tile_image(cute_tiled_map_t* map, int gid)
 
             // Switch the tile to the animation frame.
             gid = tile->tileset->firstgid + tile->descriptor->animation[desiredFrame].tileid;
-            tile = (pntr_tiled_tile*)map->tiledversion.ptr;
-            tile = tile + gid - 1;
+            if (gid <= 0 || gid > map->nextobjectid) {
+                return NULL;
+            }
+            tile = tiles + gid - 1;
         }
+    }
+
+    // A blank tile has no image to draw.
+    if (tile->image.data == NULL) {
+        return NULL;
     }
 
     return &tile->image;

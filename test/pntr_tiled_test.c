@@ -93,6 +93,52 @@ int main() {
             assert(layer == NULL);
         }
 
+        // pntr_tiled_tile_image()
+        {
+            assert(pntr_tiled_tile_image(map, 1) != NULL);
+            assert(pntr_tiled_tile_image(map, 0) == NULL);
+            assert(pntr_tiled_tile_image(map, -3) == NULL);
+
+            // A gid past the end of the map's tiles must not be read.
+            assert(pntr_tiled_tile_image(map, 49) == NULL);
+            assert(pntr_tiled_tile_image(map, 100000) == NULL);
+            assert(pntr_tiled_tile_image(NULL, 1) == NULL);
+        }
+
+        pntr_unload_tiled(map);
+    }
+
+    // A "collection of images" tileset reports "columns": 0, which must not divide by zero.
+    {
+        cute_tiled_map_t* map = pntr_load_tiled("resources/pntr_tiled_test_collection.tmj");
+        assert(map != NULL);
+
+        // Per-tile images are not supported, so every tile renders blank.
+        assert(pntr_tiled_tile_image(map, 1) == NULL);
+        assert(pntr_tiled_tile_image(map, 2) == NULL);
+
+        pntr_image* actual = pntr_gen_image_tiled(map, PNTR_WHITE);
+        assert(actual != NULL);
+        assert(actual->width == 64);
+        assert(actual->height == 64);
+        assert(pntr_image_get_color(actual, 10, 10).rgba.a == 0);
+
+        pntr_unload_image(actual);
+        pntr_unload_tiled(map);
+    }
+
+    // A tileset whose image is missing must not copy from a NULL subimage.
+    {
+        cute_tiled_map_t* map = pntr_load_tiled("resources/pntr_tiled_test_missingimage.tmj");
+        assert(map != NULL);
+
+        assert(pntr_tiled_tile_image(map, 1) == NULL);
+
+        pntr_image* actual = pntr_gen_image_tiled(map, PNTR_WHITE);
+        assert(actual != NULL);
+        assert(pntr_image_get_color(actual, 10, 10).rgba.a == 0);
+
+        pntr_unload_image(actual);
         pntr_unload_tiled(map);
     }
 
