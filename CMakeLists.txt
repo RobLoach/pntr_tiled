@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 3.11)
+cmake_minimum_required(VERSION 3.14)
 project(pntr_tiled
     DESCRIPTION "pntr_tiled"
-    HOMEPAGE_URL "https://github.com/robloach/pntr_tiled"
+    HOMEPAGE_URL "https://github.com/RobLoach/pntr_tiled"
     VERSION 0.1.0
     LANGUAGES C
 )

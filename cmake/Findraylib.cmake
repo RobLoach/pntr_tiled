@@ -6,12 +6,9 @@ FetchContent_Declare(
     GIT_TAG 6.0
     GIT_SHALLOW 1
 )
-FetchContent_GetProperties(raylib)
-if (NOT raylib_POPULATED)
-    set(FETCHCONTENT_QUIET NO)
-    FetchContent_Populate(raylib)
-    set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-    set(BUILD_GAMES    OFF CACHE BOOL "" FORCE)
 
-    add_subdirectory(${raylib_SOURCE_DIR} ${raylib_BINARY_DIR})
-endif()
+# These have to be set before raylib is made available, so that raylib picks them up.
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_GAMES    OFF CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(raylib)
