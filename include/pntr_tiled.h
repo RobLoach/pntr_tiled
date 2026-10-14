@@ -814,8 +814,12 @@ static void pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_
         int shape_w = (int)PNTR_TILED_CEILF(obj->width);
         int shape_h = (int)PNTR_TILED_CEILF(obj->height);
 
-        // Create temp image
-        pntr_image* temp = pntr_new_image(shape_w, shape_h);
+        // Create temp image. This has to start blank, since an ellipse only covers part of it
+        // and the shape color can be partly transparent.
+        pntr_image* temp = pntr_gen_image_color(shape_w, shape_h, PNTR_BLANK);
+        if (temp == NULL) {
+            return;
+        }
 
         if (obj->ellipse) {
             // Draw ellipse centered in temp image
@@ -862,8 +866,13 @@ static void pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_
             points[i].y = obj->vertices[i * 2 + 1] - min_y;
         }
 
-        // Create temp image
-        pntr_image* temp = pntr_new_image(shape_w, shape_h);
+        // Create temp image. This has to start blank, since the polygon only covers part of it.
+        pntr_image* temp = pntr_gen_image_color(shape_w, shape_h, PNTR_BLANK);
+        if (temp == NULL) {
+            pntr_unload_memory(points);
+            return;
+        }
+
         pntr_draw_polygon_fill(temp, points, obj->vert_count, shapeColor);
         pntr_unload_memory(points);
 
