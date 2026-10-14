@@ -895,22 +895,20 @@ static void pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_
             pntr_draw_rectangle_fill(temp, 0, 0, shape_w, shape_h, shapeColor);
         }
 
-        // Rotate if needed. Rotating replaces the temporary image with a new one, so from
-        // here on only "rotated" has to be unloaded.
-        pntr_image* rotated = temp;
-        if (obj->rotation != 0.0f) {
-            rotated = pntr_image_rotate(temp, obj->rotation, PNTR_FILTER_BILINEAR);
-            pntr_unload_image(temp);
-        }
+        // Tiled turns an object clockwise about its own x/y, which for a rectangle or an
+        // ellipse is the top left corner of its bounding box, and so the pixel at (0, 0) of
+        // the temporary image. That is exactly the pivot pntr_draw_image_rotated() takes:
+        // the source pixel at the offset lands on the position at every angle, so there is
+        // no grown bounding box left to compensate for. An unrotated draw falls through to a
+        // plain blit, so the same call covers every object. Tiled's rotation is clockwise and
+        // pntr's turns the other way, hence the negated angle.
+        pntr_draw_image_rotated(dst, temp,
+            (int)(obj->x + posX), (int)(obj->y + posY),
+            -obj->rotation,
+            0.0f, 0.0f,
+            PNTR_FILTER_BILINEAR);
 
-        // TODO: Object layer: Tiled rotates an object about its own x/y, but this draws the
-        // grown bounding box of the rotation at that position instead, which puts any object
-        // with a rotation that isn't a full turn in the wrong place.
-        int draw_x = (int)(obj->x + posX);
-        int draw_y = (int)(obj->y + posY);
-        pntr_draw_image(dst, rotated, draw_x, draw_y);
-
-        pntr_unload_image(rotated);
+        pntr_unload_image(temp);
         return;
     }
 
@@ -943,22 +941,18 @@ static void pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_
         pntr_draw_polygon_fill(temp, points, obj->vert_count, shapeColor);
         pntr_unload_memory(points);
 
-        // Rotate if needed. Rotating replaces the temporary image with a new one, so from
-        // here on only "rotated" has to be unloaded.
-        pntr_image* rotated = temp;
-        if (obj->rotation != 0.0f) {
-            rotated = pntr_image_rotate(temp, obj->rotation, PNTR_FILTER_BILINEAR);
-            pntr_unload_image(temp);
-        }
+        // Tiled turns an object clockwise about its own x/y, which for a polygon is the point
+        // its vertices are listed relative to, and not the top left of its bounding box. The
+        // temporary image holds the polygon shifted by its own bounds, so that origin sits at
+        // (-min_x, -min_y) within it, which is the pivot handed to pntr_draw_image_rotated().
+        // See the rectangle above for why this needs no bounding box compensation.
+        pntr_draw_image_rotated(dst, temp,
+            (int)(obj->x + posX), (int)(obj->y + posY),
+            -obj->rotation,
+            -min_x, -min_y,
+            PNTR_FILTER_BILINEAR);
 
-        // TODO: Object layer: Tiled rotates an object about its own x/y, but this draws the
-        // grown bounding box of the rotation at that position instead, which puts any object
-        // with a rotation that isn't a full turn in the wrong place.
-        int draw_x = (int)(obj->x + posX + min_x);
-        int draw_y = (int)(obj->y + posY + min_y);
-        pntr_draw_image(dst, rotated, draw_x, draw_y);
-
-        pntr_unload_image(rotated);
+        pntr_unload_image(temp);
         return;
     }
 }
