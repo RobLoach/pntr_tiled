@@ -32,6 +32,7 @@ foreach (example_source ${example_sources})
             pntr_tiled
         )
         target_compile_definitions(${example_name_raylib} PUBLIC PNTR_APP_RAYLIB)
+        pntr_tiled_set_warnings(${example_name_raylib})
     endif()
 endforeach ()
 

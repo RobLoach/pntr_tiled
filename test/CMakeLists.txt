@@ -18,6 +18,7 @@ target_link_libraries(pntr_tiled_test PUBLIC
     pntr_assetsys
 )
 set_property(TARGET pntr_tiled_test PROPERTY C_STANDARD 11)
+pntr_tiled_set_warnings(pntr_tiled_test)
 
 # Set up the test
 list(APPEND CMAKE_CTEST_ARGUMENTS "--output-on-failure")

@@ -20,6 +20,36 @@ endif()
 option(PNTR_TILED_BUILD_EXAMPLES "pntr_tiled: Examples" ${PNTR_TILED_IS_MAIN})
 option(PNTR_TILED_BUILD_EXAMPLES_RAYLIB "pntr_tiled: raylib example" ${PNTR_TILED_IS_MAIN})
 option(PNTR_TILED_BUILD_TESTS "pntr_tiled: Tests" ${PNTR_TILED_IS_MAIN})
+option(PNTR_TILED_WERROR "pntr_tiled: Treat warnings as errors in the tests and examples" OFF)
+
+# Apply pntr_tiled's warning flags to one of its own targets. These are deliberately not put on
+# the pntr_tiled interface library, so that consumers are never forced into them.
+function(pntr_tiled_set_warnings target)
+    if (MSVC)
+        target_compile_options(${target} PRIVATE /W4)
+        if (PNTR_TILED_WERROR)
+            target_compile_options(${target} PRIVATE /WX)
+        endif()
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wmissing-prototypes -pedantic)
+        if (PNTR_TILED_WERROR)
+            target_compile_options(${target} PRIVATE -Werror)
+        endif()
+    endif()
+
+    # The dependencies are vendored third party headers, so their own warnings are not
+    # pntr_tiled's to fix.
+    foreach (dependency pntr pntr_app pntr_assetsys)
+        if (TARGET ${dependency})
+            get_target_property(dependency_includes ${dependency} INTERFACE_INCLUDE_DIRECTORIES)
+            if (dependency_includes)
+                set_property(TARGET ${dependency} APPEND PROPERTY
+                    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ${dependency_includes}
+                )
+            endif()
+        endif()
+    endforeach()
+endfunction()
 
 if (PNTR_TILED_BUILD_EXAMPLES)
     add_subdirectory(examples)

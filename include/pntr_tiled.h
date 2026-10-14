@@ -76,6 +76,21 @@ PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int 
  * @param tint The color to tint the tile when drawing.
  */
 PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map, int gid, int posX, int posY, pntr_color tint);
+/**
+ * Draw the given layer, and every layer that follows it, onto the provided image destination.
+ *
+ * @details Hidden layers, fully transparent layers and layers with an unknown type are
+ * skipped. A group layer draws its child layers, offset by the group's own offset.
+ *
+ * @param dst The destination of where to draw the layers.
+ * @param map The map that the layer belongs to.
+ * @param layer The first layer to draw. Every layer linked after it is drawn too.
+ * @param posX The position to draw the layers along the X coordinate.
+ * @param posY The position to draw the layers along the Y coordinate.
+ * @param tint The color to tint the layers when drawing.
+ */
+PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
+
 PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 PNTR_TILED_API void pntr_draw_tiled_layer_tilelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 
@@ -297,7 +312,17 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, 
 #define CUTE_TILED_FREAD(data, sz, num, fp)
 #define CUTE_TILED_FTELL(fp) 0
 #define CUTE_TILED_FCLOSE(fp) (void)fp
+
+// cute_tiled defines its internal helpers without prototypes, so -Wmissing-prototypes is
+// silenced across the vendored implementation rather than patching the vendored header.
+#if !defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wmissing-prototypes"
+#endif
 #include PNTR_TILED_CUTE_TILED_H
+#if !defined(__cplusplus) && (defined(__GNUC__) || defined(__clang__))
+    #pragma GCC diagnostic pop
+#endif
 
 /**
  * Internal pntr_tiled data for tiles within map tilesets.
@@ -869,8 +894,9 @@ static int pntr_compare_y(const void* a, const void* b) {
 }
 
 PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
-    // Determine draw order
-    const char* draworder = layer->draworder.ptr ? layer->draworder.ptr : "topdown";
+    // Determine draw order.
+    // TODO: Object layer: Honour the layer's draworder of "topdown" or "index". Objects are
+    // currently always drawn in file order unless the layer's class is "ysort".
     int use_ysort = (layer->class_.ptr != NULL && PNTR_STRCMP(layer->class_.ptr, "ysort") == 0);
 
     // Count visible objects
@@ -1110,7 +1136,7 @@ PNTR_TILED_API cute_tiled_object_t* pntr_tiled_get_object(cute_tiled_layer_t* ob
   }
   cute_tiled_object_t* current = objects_layer->objects;
   while (current != NULL) {
-    if (current->name.ptr != NULL && strcmp(current->name.ptr, name) == 0) {
+    if (current->name.ptr != NULL && PNTR_STRCMP(current->name.ptr, name) == 0) {
       return current;
     }
     current = current->next;

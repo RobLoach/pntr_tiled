@@ -22,6 +22,10 @@ typedef struct AppData {
     Direction direction;
 } AppData;
 
+bool Init(pntr_app* app);
+bool Update(pntr_app* app, pntr_image* screen);
+void Close(pntr_app* app);
+
 bool Init(pntr_app* app) {
     AppData* appData = pntr_load_memory(sizeof(AppData));
     pntr_app_set_userdata(app, appData);
@@ -49,11 +53,11 @@ bool Init(pntr_app* app) {
     // printf("Player GIDs: N:%d S:%d E:%d W:%d\n", N->gid, S->gid, E->gid, W->gid);
 
     if (appData->objects == NULL) {
-        printf("no objects");
+        pntr_app_log(PNTR_APP_LOG_ERROR, "no objects");
     }
 
     if (appData->player == NULL) {
-        printf("no player");
+        pntr_app_log(PNTR_APP_LOG_ERROR, "no player");
     }
 
     return true;
@@ -124,6 +128,9 @@ void Close(pntr_app* app) {
 }
 
 pntr_app Main(int argc, char* argv[]) {
+    (void)argc;
+    (void)argv;
+
     return (pntr_app) {
         .width = 400,
         .height = 225,
