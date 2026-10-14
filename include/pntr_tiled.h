@@ -78,6 +78,28 @@ PNTR_TILED_API void pntr_draw_tiled(pntr_image* dst, cute_tiled_map_t* map, int 
 PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map, int gid, int posX, int posY, pntr_color tint);
 PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 PNTR_TILED_API void pntr_draw_tiled_layer_tilelayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
+
+/**
+ * Draw all the visible objects of an object layer onto the provided image destination.
+ *
+ * @details Rectangle, ellipse and polygon objects have no image of their own, so they are
+ * filled with a solid color. That color is the layer's own color multiplied into the given
+ * tint. In Tiled an object layer's "color" is the editor display color used to draw the
+ * outlines of its shapes, and cute_tiled reads it into the layer's tintcolor, so it is the
+ * closest match available to what the editor previews. A layer with no color set is drawn in
+ * the unmodified tint.
+ *
+ * Tile objects are drawn from their tile image through pntr_draw_tiled_tile(), using the
+ * unmodified tint. The layer color is not applied to them, so that a tile placed as an object
+ * looks the same as the same tile placed on a tile layer.
+ *
+ * @param dst The destination of where to draw the layer.
+ * @param map The map that the layer belongs to.
+ * @param layer The object layer to draw.
+ * @param posX The position to draw the layer along the X coordinate.
+ * @param posY The position to draw the layer along the Y coordinate.
+ * @param tint The color to tint the layer when drawing.
+ */
 PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint);
 
 /**
@@ -696,11 +718,10 @@ PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled
     PNTR_UNUSED(map);
     pntr_image* image = (pntr_image*)layer->image.ptr;
 
+    // Tiled's tintcolor multiplies the layer rather than replacing its tint. The layer's
+    // opacity has already been folded into the tint by pntr_draw_tiled_layer().
     if (layer->tintcolor != 0) {
-        tint = pntr_color_alpha_blend(tint,
-            pntr_tiled_color(layer->tintcolor)
-        );
-        tint.rgba.a *= layer->opacity;
+        tint = pntr_color_tint(tint, pntr_tiled_color(layer->tintcolor));
     }
 
     // TODO: Image layer: Support repeatx and repeaty
@@ -730,7 +751,16 @@ static void get_polygon_bounds(const float* vertices, int vert_count, float* out
     *out_max_y = max_y;
 }
 
-void static pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_object_t* obj, int posX, int posY, pntr_color tint) {
+/**
+ * Draw a single object from an object layer.
+ *
+ * @param tint The tint to draw a tile object with.
+ * @param shapeColor The color to fill a rectangle, ellipse or polygon object with.
+ *
+ * @internal
+ * @private
+ */
+static void pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_object_t* obj, int posX, int posY, pntr_color tint, pntr_color shapeColor) {
     if (obj->gid != 0) {
         pntr_draw_tiled_tile(dst, map, obj->gid, (int)(obj->x + posX), (int)(obj->y + posY - map->tileheight), tint);
         return;
@@ -746,10 +776,10 @@ void static pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_
 
         if (obj->ellipse) {
             // Draw ellipse centered in temp image
-            pntr_draw_ellipse_fill(temp, shape_w/2, shape_h/2, shape_w/2, shape_h/2, tint);
+            pntr_draw_ellipse_fill(temp, shape_w/2, shape_h/2, shape_w/2, shape_h/2, shapeColor);
         } else {
             // Draw rectangle at (0,0)
-            pntr_draw_rectangle_fill(temp, 0, 0, shape_w, shape_h, tint);
+            pntr_draw_rectangle_fill(temp, 0, 0, shape_w, shape_h, shapeColor);
         }
 
         // Rotate if needed
@@ -787,7 +817,7 @@ void static pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_
 
         // Create temp image
         pntr_image* temp = pntr_new_image(shape_w, shape_h);
-        pntr_draw_polygon_fill(temp, points, obj->vert_count, tint);
+        pntr_draw_polygon_fill(temp, points, obj->vert_count, shapeColor);
         pntr_unload_memory(points);
 
         // Rotate if needed
@@ -832,25 +862,34 @@ PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tile
         return;
     }
 
-    pntr_color color = pntr_color_alpha_blend(tint, pntr_tiled_color(layer->tintcolor));
+    // An object layer's "color" is only applied to the shapes. See the notes on
+    // pntr_draw_tiled_layer_objectlayer() for why tile objects keep the unmodified tint.
+    pntr_color shapeColor = tint;
+    if (layer->tintcolor != 0) {
+        shapeColor = pntr_color_tint(tint, pntr_tiled_color(layer->tintcolor));
+    }
 
     if (use_ysort) {
         // Collect and sort by Y
-        cute_tiled_object_t** arr = pntr_load_memory(count * sizeof(*arr));
+        cute_tiled_object_t** arr = (cute_tiled_object_t**)pntr_load_memory((size_t)count * sizeof(*arr));
+        if (arr == NULL) {
+            return;
+        }
+
         int i = 0;
         for (cute_tiled_object_t* o = layer->objects; o; o = o->next){
             if (o->visible) arr[i++] = o;
         }
         // TODO: Possibly avoid the use of stblib's qsort here?
-        qsort(arr, count, sizeof(*arr), pntr_compare_y);
+        qsort(arr, (size_t)count, sizeof(*arr), pntr_compare_y);
         for (i = 0; i < count; i++) {
-            pntr_tiled_draw_object(dst, map, arr[i], posX, posY, color);
+            pntr_tiled_draw_object(dst, map, arr[i], posX, posY, tint, shapeColor);
         }
         pntr_unload_memory(arr);
     } else { // "index"
         for (cute_tiled_object_t* o = layer->objects; o; o = o->next){
             if (o->visible) {
-                pntr_tiled_draw_object(dst, map, o, posX, posY, color);
+                pntr_tiled_draw_object(dst, map, o, posX, posY, tint, shapeColor);
             }
         }
     }
