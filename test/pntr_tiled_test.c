@@ -141,7 +141,8 @@ int main() {
                 childCount++;
             }
 
-            assert(childCount == 2);
+            // Two more object layers were added to cover draworder, so the group holds four.
+            assert(childCount == 4);
             assert(objects != NULL);
             assert(tinted != NULL);
             assert(objects->tintcolor == 0);
@@ -239,6 +240,47 @@ int main() {
             assert(abs(maxY - 129) <= 1);
 
             pntr_unload_image(layerOnly);
+        }
+
+        // Tiled's draworder decides how a layer stacks its objects. Both of these layers
+        // hold the same two objects -- a tile listed first and sitting lower down, and a
+        // rectangle listed second and sitting higher up -- so the only difference between
+        // them is the draworder itself:
+        //
+        //   "index"   keeps file order, so the rectangle is drawn last and covers the tile.
+        //   "topdown" sorts by y, so the tile is drawn last and covers the rectangle.
+        //
+        // The rectangle takes the layer's tint, which is white here, and the tile has its
+        // own pixels, so sampling where the two overlap says which one landed on top. Two
+        // shapes of the same color could not show this: the order of two identical opaque
+        // fills is not observable.
+        {
+            pntr_image* actual = pntr_gen_image_tiled(map, PNTR_WHITE);
+            assert(actual != NULL);
+
+            // The tile object is drawn at its y minus one tile height, and the group layer
+            // offsets everything by (10, 20), so the overlap sits at x 50..81, y 260..279
+            // for the first layer and 150 pixels to the right for the second.
+            pntr_color indexOverlap = pntr_image_get_color(actual, 60, 270);
+            pntr_color topdownOverlap = pntr_image_get_color(actual, 210, 270);
+
+            // File order puts the rectangle on top, so the overlap is the plain tint.
+            assert(indexOverlap.value == PNTR_WHITE.value);
+
+            // The top down sort puts the tile on top, so the overlap is tile pixels.
+            assert(topdownOverlap.value != PNTR_WHITE.value);
+
+            // And it really is the tile that is showing, not some other layer: the same
+            // pixel of the same gid drawn on its own has to match.
+            pntr_image* tileImage = pntr_tiled_tile_image(map, 10);
+            assert(tileImage != NULL);
+            assert(pntr_image_get_color(tileImage, 210 - 200, 270 - 248).value == topdownOverlap.value);
+
+            // Outside the overlap each object still draws, so neither was skipped.
+            assert(pntr_image_get_color(actual, 100, 290).value == PNTR_WHITE.value);
+            assert(pntr_image_get_color(actual, 250, 290).value == PNTR_WHITE.value);
+
+            pntr_unload_image(actual);
         }
 
         // pntr_draw_tiled_layer_objectlayer()

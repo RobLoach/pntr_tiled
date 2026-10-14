@@ -228,6 +228,74 @@
                  "visible":true,
                  "x":0,
                  "y":0
+                }, 
+                {
+                 "draworder":"index",
+                 "id":90,
+                 "name":"Index Order",
+                 "objects":[
+                        {
+                         "gid":10,
+                         "height":32,
+                         "id":9,
+                         "name":"Index Order tile",
+                         "rotation":0,
+                         "type":"",
+                         "visible":true,
+                         "width":32,
+                         "x":40,
+                         "y":260
+                        }, 
+                        {
+                         "height":40,
+                         "id":10,
+                         "name":"Index Order rect",
+                         "rotation":0,
+                         "type":"",
+                         "visible":true,
+                         "width":60,
+                         "x":40,
+                         "y":240
+                        }],
+                 "opacity":1,
+                 "type":"objectgroup",
+                 "visible":true,
+                 "x":0,
+                 "y":0
+                }, 
+                {
+                 "draworder":"topdown",
+                 "id":91,
+                 "name":"Topdown Order",
+                 "objects":[
+                        {
+                         "gid":10,
+                         "height":32,
+                         "id":11,
+                         "name":"Topdown Order tile",
+                         "rotation":0,
+                         "type":"",
+                         "visible":true,
+                         "width":32,
+                         "x":190,
+                         "y":260
+                        }, 
+                        {
+                         "height":40,
+                         "id":12,
+                         "name":"Topdown Order rect",
+                         "rotation":0,
+                         "type":"",
+                         "visible":true,
+                         "width":60,
+                         "x":190,
+                         "y":240
+                        }],
+                 "opacity":1,
+                 "type":"objectgroup",
+                 "visible":true,
+                 "x":0,
+                 "y":0
                 }],
          "name":"Group",
          "offsetx":10,
