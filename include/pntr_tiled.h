@@ -934,7 +934,10 @@ PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_colo
         return pntr_set_error(PNTR_ERROR_INVALID_ARGS);
     }
 
-    pntr_color background = pntr_get_color(map->backgroundcolor);
+    // cute_tiled keeps the background color as the raw hex from the file (#RRGGBB or
+    // #AARRGGBB), which pntr_tiled_color() decodes. A map with no background color is left
+    // transparent.
+    pntr_color background = map->backgroundcolor != 0 ? pntr_tiled_color(map->backgroundcolor) : PNTR_BLANK;
     pntr_image* output = pntr_gen_image_color(map->tilewidth * map->width, map->tileheight * map->height, background);
     if (output == NULL) {
         return NULL;

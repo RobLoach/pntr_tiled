@@ -142,6 +142,40 @@ int main() {
         pntr_unload_tiled(map);
     }
 
+    // The map's backgroundcolor is the raw file hex, not 0xRRGGBBAA.
+    {
+        cute_tiled_map_t* map = pntr_load_tiled("resources/pntr_tiled_test_background.tmj");
+        assert(map != NULL);
+
+        // Note that PNTR_RED is not a pure red, so the channels are checked directly.
+        pntr_image* actual = pntr_gen_image_tiled(map, PNTR_WHITE);
+        assert(actual != NULL);
+
+        pntr_color background = pntr_image_get_color(actual, 10, 10);
+        assert(background.rgba.r == 0xFF);
+        assert(background.rgba.g == 0x00);
+        assert(background.rgba.b == 0x00);
+        assert(background.rgba.a == 0xFF);
+
+        pntr_unload_image(actual);
+        pntr_unload_tiled(map);
+
+        map = pntr_load_tiled("resources/pntr_tiled_test_background_alpha.tmj");
+        assert(map != NULL);
+
+        actual = pntr_gen_image_tiled(map, PNTR_WHITE);
+        assert(actual != NULL);
+
+        background = pntr_image_get_color(actual, 10, 10);
+        assert(background.rgba.a == 0x80);
+        assert(background.rgba.r == 0xFF);
+        assert(background.rgba.g == 0x00);
+        assert(background.rgba.b == 0x00);
+
+        pntr_unload_image(actual);
+        pntr_unload_tiled(map);
+    }
+
     // assertsys
     #ifdef PNTR_ASSETSYS_IMPLEMENTATION
     {
