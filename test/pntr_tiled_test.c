@@ -13,6 +13,29 @@
 // Assertion library
 #include "pntr_assert.h"
 
+/**
+ * Find the bounding box of everything drawn inside the given window of an image.
+ *
+ * Used to measure where a rotated object actually landed, so that it can be checked against
+ * the bounds worked out from Tiled's own rotation rather than against a golden image.
+ */
+static void find_drawn_bounds(pntr_image* image, int windowX, int windowY, int windowWidth, int windowHeight, int* minX, int* minY, int* maxX, int* maxY) {
+    *minX = *minY = 1 << 30;
+    *maxX = *maxY = -(1 << 30);
+
+    for (int y = windowY; y < windowY + windowHeight; y++) {
+        for (int x = windowX; x < windowX + windowWidth; x++) {
+            if (pntr_image_get_color(image, x, y).rgba.a == 0) {
+                continue;
+            }
+            if (x < *minX) *minX = x;
+            if (x > *maxX) *maxX = x;
+            if (y < *minY) *minY = y;
+            if (y > *maxY) *maxY = y;
+        }
+    }
+}
+
 int main() {
     // pntr_load_tiled()
     {
@@ -150,14 +173,72 @@ int main() {
             assert(hidden != NULL);
             assert(!hidden->visible);
 
-            // The rotation is a full turn, which is the only rotation that currently lands
-            // where Tiled previews it. See the note about rotated object positioning below.
+            // A full turn, which has to land exactly where an unrotated object would.
             cute_tiled_object_t* rotated = pntr_tiled_get_object(objects, "rotated");
             assert(rotated != NULL);
             assert(rotated->rotation == 360);
 
+            cute_tiled_object_t* rotated45 = pntr_tiled_get_object(objects, "rotated45");
+            assert(rotated45 != NULL);
+            assert(rotated45->rotation == 45);
+
+            cute_tiled_object_t* rotated90 = pntr_tiled_get_object(objects, "rotated90");
+            assert(rotated90 != NULL);
+            assert(rotated90->rotation == 90);
+
             assert(pntr_tiled_get_object(objects, "Non-Existant Object") == NULL);
             assert(pntr_tiled_get_object(NULL, "rect") == NULL);
+        }
+
+        // Rotated objects have to land where Tiled puts them, which is a clockwise turn
+        // about the object's own x/y. These bounds come from rotating the corners by hand
+        // rather than from whatever the renderer happens to produce:
+        //
+        //   rotated45: 40x20 at (130, 140) after the group's (10, 20) offset. Turning the
+        //              corners 45 degrees clockwise gives x from -14.14 to 28.28 and y from
+        //              0 to 42.43, so x [115.86..158.28] and y [140..182.43].
+        //   rotated90: 40x20 at (230, 140). A quarter turn gives x from -20 to 0 and y from
+        //              0 to 40, so x [210..230] and y [140..180].
+        //   rotated:   40x30 at (430, 100) turned a full circle, so exactly where an
+        //              unrotated object would be: x [430..469] and y [100..129].
+        //
+        // The group layer is drawn on its own so the objects sit on a blank background and
+        // can be measured. A few pixels of slack covers the antialiased leading corner,
+        // which is far tighter than the ~14 pixel error this is guarding against.
+        {
+            cute_tiled_layer_t* group = pntr_tiled_layer(map, "Group");
+            assert(group != NULL);
+
+            pntr_image* layerOnly = pntr_gen_image_color(map->width * map->tilewidth, map->height * map->tileheight, PNTR_BLANK);
+            assert(layerOnly != NULL);
+            pntr_draw_tiled_layer(layerOnly, map, group, 0, 0, PNTR_WHITE);
+
+            int minX, minY, maxX, maxY;
+            const int slack = 3;
+
+            find_drawn_bounds(layerOnly, 100, 125, 80, 75, &minX, &minY, &maxX, &maxY);
+            assert(abs(minX - 116) <= slack);
+            assert(abs(maxX - 158) <= slack);
+            assert(abs(minY - 140) <= slack);
+            assert(abs(maxY - 182) <= slack);
+
+            find_drawn_bounds(layerOnly, 200, 130, 60, 60, &minX, &minY, &maxX, &maxY);
+            assert(abs(minX - 210) <= slack);
+            assert(abs(maxX - 230) <= slack);
+            assert(abs(minY - 140) <= slack);
+            assert(abs(maxY - 180) <= slack);
+
+            // A full turn has to put the object exactly where an unrotated one would, so
+            // its top left corner is asserted exactly. The far edge gets a pixel of slack:
+            // bilinear sampling at a full turn bleeds a faint column past the 40x30 shape,
+            // which is a property of the rotated draw rather than a placement error.
+            find_drawn_bounds(layerOnly, 420, 90, 70, 60, &minX, &minY, &maxX, &maxY);
+            assert(minX == 430);
+            assert(minY == 100);
+            assert(abs(maxX - 469) <= 1);
+            assert(abs(maxY - 129) <= 1);
+
+            pntr_unload_image(layerOnly);
         }
 
         // pntr_draw_tiled_layer_objectlayer()
