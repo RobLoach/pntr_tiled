@@ -78,7 +78,7 @@ int main() {
 
         // pntr_tiled_layer_count()
         {
-            assert(pntr_tiled_layer_count(map) == 4);
+            assert(pntr_tiled_layer_count(map) == 5);
         }
 
         // pntr_tiled_layer_from_index()
@@ -91,6 +91,112 @@ int main() {
 
             layer = pntr_tiled_layer_from_index(map, 500);
             assert(layer == NULL);
+        }
+
+        // Group layers and object layers
+        {
+            cute_tiled_layer_t* group = pntr_tiled_layer(map, "Group");
+            assert(group != NULL);
+            assert(PNTR_STRCMP(group->type.ptr, "group") == 0);
+            assert(group->offsetx == 10);
+            assert(group->offsety == 20);
+
+            // The group wraps a plain object layer, and one with a "color". Note that
+            // cute_tiled leaves a group's child layers in reverse file order, so they are
+            // looked up by name here.
+            cute_tiled_layer_t* objects = NULL;
+            cute_tiled_layer_t* tinted = NULL;
+            int childCount = 0;
+            for (cute_tiled_layer_t* child = group->layers; child; child = child->next) {
+                assert(PNTR_STRCMP(child->type.ptr, "objectgroup") == 0);
+                if (PNTR_STRCMP(child->name.ptr, "Objects") == 0) {
+                    objects = child;
+                }
+                else if (PNTR_STRCMP(child->name.ptr, "Tinted Objects") == 0) {
+                    tinted = child;
+                }
+                childCount++;
+            }
+
+            assert(childCount == 2);
+            assert(objects != NULL);
+            assert(tinted != NULL);
+            assert(objects->tintcolor == 0);
+            assert(tinted->tintcolor == 0xFFFFFB00);
+
+            // pntr_tiled_get_object()
+            cute_tiled_object_t* rect = pntr_tiled_get_object(objects, "rect");
+            assert(rect != NULL);
+            assert(rect->x == 300);
+            assert(rect->y == 20);
+            assert(rect->width == 40);
+            assert(rect->height == 30);
+            assert(rect->visible);
+
+            cute_tiled_object_t* ellipse = pntr_tiled_get_object(objects, "ellipse");
+            assert(ellipse != NULL);
+            assert(ellipse->ellipse);
+
+            cute_tiled_object_t* polygon = pntr_tiled_get_object(objects, "polygon");
+            assert(polygon != NULL);
+            assert(polygon->vert_type == 1);
+            assert(polygon->vert_count == 3);
+
+            cute_tiled_object_t* tile = pntr_tiled_get_object(objects, "tile");
+            assert(tile != NULL);
+            assert(tile->gid == 10);
+
+            cute_tiled_object_t* hidden = pntr_tiled_get_object(objects, "hidden");
+            assert(hidden != NULL);
+            assert(!hidden->visible);
+
+            // The rotation is a full turn, which is the only rotation that currently lands
+            // where Tiled previews it. See the note about rotated object positioning below.
+            cute_tiled_object_t* rotated = pntr_tiled_get_object(objects, "rotated");
+            assert(rotated != NULL);
+            assert(rotated->rotation == 360);
+
+            assert(pntr_tiled_get_object(objects, "Non-Existant Object") == NULL);
+            assert(pntr_tiled_get_object(NULL, "rect") == NULL);
+        }
+
+        // pntr_draw_tiled_layer_objectlayer()
+        {
+            pntr_image* actual = pntr_gen_image_tiled(map, PNTR_WHITE);
+            assert(actual != NULL);
+
+            // Every shape on the untinted object layer draws in the tint it was given, and
+            // not in opaque black. The group layer offsets them all by (10, 20).
+            assert(pntr_image_get_color(actual, 320, 50).value == PNTR_WHITE.value);
+            assert(pntr_image_get_color(actual, 390, 55).value == PNTR_WHITE.value);
+            assert(pntr_image_get_color(actual, 330, 115).value == PNTR_WHITE.value);
+            assert(pntr_image_get_color(actual, 450, 115).value == PNTR_WHITE.value);
+
+            // The ellipse and the polygon only cover part of their bounding box, so their
+            // corners are left to the layers underneath.
+            assert(pntr_image_get_color(actual, 371, 41).value != PNTR_WHITE.value);
+            assert(pntr_image_get_color(actual, 311, 118).value != PNTR_WHITE.value);
+
+            // A hidden object is not drawn at all.
+            assert(pntr_image_get_color(actual, 440, 50).value != PNTR_WHITE.value);
+
+            // An object layer with a "color" multiplies it into the shape colors.
+            pntr_color tinted = pntr_image_get_color(actual, 390, 115);
+            assert(tinted.rgba.r == 0xFF);
+            assert(tinted.rgba.g == 0xFB);
+            assert(tinted.rgba.b == 0x00);
+
+            // ... but not into its tile objects, so that a tile placed as an object looks the
+            // same as the same tile placed on a tile layer.
+            for (int y = 0; y < 32; y++) {
+                for (int x = 0; x < 32; x++) {
+                    pntr_color plain = pntr_image_get_color(actual, 310 + x, 188 + y);
+                    pntr_color onTinted = pntr_image_get_color(actual, 430 + x, 188 + y);
+                    assert(plain.value == onTinted.value);
+                }
+            }
+
+            pntr_unload_image(actual);
         }
 
         // pntr_tiled_tile_image()
