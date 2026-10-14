@@ -829,21 +829,22 @@ static void pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_
             pntr_draw_rectangle_fill(temp, 0, 0, shape_w, shape_h, shapeColor);
         }
 
-        // Rotate if needed
+        // Rotate if needed. Rotating replaces the temporary image with a new one, so from
+        // here on only "rotated" has to be unloaded.
         pntr_image* rotated = temp;
         if (obj->rotation != 0.0f) {
             rotated = pntr_image_rotate(temp, obj->rotation, PNTR_FILTER_BILINEAR);
             pntr_unload_image(temp);
         }
 
-        // Draw rotated image centered at (obj->x, obj->y)
+        // TODO: Object layer: Tiled rotates an object about its own x/y, but this draws the
+        // grown bounding box of the rotation at that position instead, which puts any object
+        // with a rotation that isn't a full turn in the wrong place.
         int draw_x = (int)(obj->x + posX);
         int draw_y = (int)(obj->y + posY);
         pntr_draw_image(dst, rotated, draw_x, draw_y);
 
-        if (rotated != temp) {
-            pntr_unload_image(rotated);
-        }
+        pntr_unload_image(rotated);
         return;
     }
 
@@ -876,21 +877,22 @@ static void pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_
         pntr_draw_polygon_fill(temp, points, obj->vert_count, shapeColor);
         pntr_unload_memory(points);
 
-        // Rotate if needed
+        // Rotate if needed. Rotating replaces the temporary image with a new one, so from
+        // here on only "rotated" has to be unloaded.
         pntr_image* rotated = temp;
         if (obj->rotation != 0.0f) {
             rotated = pntr_image_rotate(temp, obj->rotation, PNTR_FILTER_BILINEAR);
             pntr_unload_image(temp);
         }
 
-        // Draw rotated image centered at (obj->x, obj->y)
+        // TODO: Object layer: Tiled rotates an object about its own x/y, but this draws the
+        // grown bounding box of the rotation at that position instead, which puts any object
+        // with a rotation that isn't a full turn in the wrong place.
         int draw_x = (int)(obj->x + posX + min_x);
         int draw_y = (int)(obj->y + posY + min_y);
         pntr_draw_image(dst, rotated, draw_x, draw_y);
 
-        if (rotated != temp) {
-            pntr_unload_image(rotated);
-        }
+        pntr_unload_image(rotated);
         return;
     }
 }
