@@ -197,9 +197,6 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, 
 
 #endif  // PNTR_TILED_H_
 
-// TODO: Remove stdio.h
-#include <stdio.h> // printf
-
 #ifdef PNTR_TILED_IMPLEMENTATION
 #ifndef PNTR_TILED_IMPLEMENTATION_ONCE
 #define PNTR_TILED_IMPLEMENTATION_ONCE
@@ -211,6 +208,27 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, 
 #ifndef PNTR_STRRCHR
     #include <string.h>
     #define PNTR_STRRCHR strrchr
+#endif
+
+/**
+ * Log a printf-style message.
+ *
+ * Does nothing by default so that this header does not pull in stdio.h. Define
+ * PNTR_TILED_ENABLE_LOG for a printf-based implementation, or define PNTR_TILED_LOG to route
+ * the messages somewhere else.
+ */
+#ifndef PNTR_TILED_LOG
+    #ifdef PNTR_TILED_ENABLE_LOG
+        #include <stdio.h>
+        #define PNTR_TILED_LOG(...) printf(__VA_ARGS__)
+    #else
+        #define PNTR_TILED_LOG(...) ((void)0)
+    #endif
+#endif
+
+#ifndef PNTR_TILED_QSORT
+    #include <stdlib.h>
+    #define PNTR_TILED_QSORT qsort
 #endif
 
 #ifndef PNTR_STRCMP
@@ -535,7 +553,7 @@ static void _pntr_load_tiled_string_texture(cute_tiled_string_t* image, const ch
     // Replace the image string with a pointer to the new image.
     image->ptr = (const char*)pntr_load_image(fullPath);
     if (image->ptr == NULL) {
-        printf("pntr_tiled: Failed to load image: %s", fullPath);
+        PNTR_TILED_LOG("pntr_tiled: Failed to load image: %s\n", fullPath);
     }
 }
 
@@ -729,8 +747,8 @@ PNTR_TILED_API void pntr_draw_tiled_layer_imagelayer(pntr_image* dst, cute_tiled
     pntr_draw_image_tint(dst, image, posX, posY, tint);
 }
 
-#ifndef CEILF
-#define CEILF(x) ((int)((x) + 0.999999f))
+#ifndef PNTR_TILED_CEILF
+#define PNTR_TILED_CEILF(x) ((int)((x) + 0.999999f))
 #endif
 
 // Helper: get bounding box for polygon
@@ -768,8 +786,8 @@ static void pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_
 
     // Rectangle or Ellipse
     if (obj->vert_count == 0) {
-        int shape_w = (int)CEILF(obj->width);
-        int shape_h = (int)CEILF(obj->height);
+        int shape_w = (int)PNTR_TILED_CEILF(obj->width);
+        int shape_h = (int)PNTR_TILED_CEILF(obj->height);
 
         // Create temp image
         pntr_image* temp = pntr_new_image(shape_w, shape_h);
@@ -805,11 +823,15 @@ static void pntr_tiled_draw_object(pntr_image* dst, cute_tiled_map_t* map, cute_
         // Compute bounding box of polygon
         float min_x, min_y, max_x, max_y;
         get_polygon_bounds(obj->vertices, obj->vert_count, &min_x, &min_y, &max_x, &max_y);
-        int shape_w = (int)CEILF(max_x - min_x);
-        int shape_h = (int)CEILF(max_y - min_y);
+        int shape_w = (int)PNTR_TILED_CEILF(max_x - min_x);
+        int shape_h = (int)PNTR_TILED_CEILF(max_y - min_y);
 
         // Allocate and shift points to local (0,0) space
-        pntr_vector* points = malloc(sizeof(pntr_vector) * obj->vert_count);
+        pntr_vector* points = (pntr_vector*)pntr_load_memory(sizeof(pntr_vector) * (size_t)obj->vert_count);
+        if (points == NULL) {
+            return;
+        }
+
         for (int i = 0; i < obj->vert_count; ++i) {
             points[i].x = obj->vertices[i * 2] - min_x;
             points[i].y = obj->vertices[i * 2 + 1] - min_y;
@@ -880,8 +902,7 @@ PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tile
         for (cute_tiled_object_t* o = layer->objects; o; o = o->next){
             if (o->visible) arr[i++] = o;
         }
-        // TODO: Possibly avoid the use of stblib's qsort here?
-        qsort(arr, (size_t)count, sizeof(*arr), pntr_compare_y);
+        PNTR_TILED_QSORT(arr, (size_t)count, sizeof(*arr), pntr_compare_y);
         for (i = 0; i < count; i++) {
             pntr_tiled_draw_object(dst, map, arr[i], posX, posY, tint, shapeColor);
         }
