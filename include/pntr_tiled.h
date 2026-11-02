@@ -700,6 +700,44 @@ PNTR_TILED_API void pntr_unload_tiled(cute_tiled_map_t* map) {
     cute_tiled_free_map(map);
 }
 
+/**
+ * Draw an image flipped on either axis, or transposed, with a tint.
+ *
+ * pntr has no flipped draw that takes a tint, so this mirrors pntr_draw_image_flipped()
+ * while tinting each pixel.
+ *
+ * @internal
+ * @private
+ */
+static void _pntr_tiled_draw_image_flipped_tint(pntr_image* dst, pntr_image* src, int posX, int posY, bool flipHorizontal, bool flipVertical, bool flipDiagonal, pntr_color tint) {
+    if (tint.value == PNTR_WHITE_VALUE) {
+        pntr_draw_image_flipped(dst, src, posX, posY, flipHorizontal, flipVertical, flipDiagonal);
+        return;
+    }
+
+    if (dst == NULL || src == NULL) {
+        return;
+    }
+
+    int dstX, dstY;
+    for (int y = 0; y < src->height; y++) {
+        for (int x = 0; x < src->width; x++) {
+            if (flipDiagonal) {
+                dstX = flipHorizontal ? src->height - y - 1 : y;
+                dstY = flipVertical ? src->width - x - 1 : x;
+            }
+            else {
+                dstY = flipVertical ? src->height - y - 1 : y;
+                dstX = flipHorizontal ? src->width - x - 1 : x;
+            }
+
+            pntr_draw_point(dst, posX + dstX, posY + dstY,
+                pntr_color_tint(pntr_image_get_color(src, x, y), tint)
+            );
+        }
+    }
+}
+
 PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map, int gid, int posX, int posY, pntr_color tint) {
     // Get the clean Tile ID
     int tileID = cute_tiled_unset_flags(gid);
@@ -712,12 +750,12 @@ PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map,
 
     // See if we are to flip the tile in anyway.
     if (tileID != gid) {
-        // TODO: pntr_draw_tiled_tile: Add flipped tile with tint with pntr_draw_image_flipped_tint
-        pntr_draw_image_flipped(dst, tile,
+        _pntr_tiled_draw_image_flipped_tint(dst, tile,
             posX, posY,
             !!(gid & CUTE_TILED_FLIPPED_HORIZONTALLY_FLAG),
             !!(gid & CUTE_TILED_FLIPPED_VERTICALLY_FLAG),
-            !!(gid & CUTE_TILED_FLIPPED_DIAGONALLY_FLAG)
+            !!(gid & CUTE_TILED_FLIPPED_DIAGONALLY_FLAG),
+            tint
         );
     }
     else {
