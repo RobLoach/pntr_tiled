@@ -464,6 +464,45 @@ int main() {
         pntr_unload_tiled(map);
     }
 
+    // Tileset and image layer images can be embedded as base64 data URIs, well over 1024 characters long.
+    {
+        cute_tiled_map_t* map = pntr_load_tiled("resources/pntr_tiled_test_base64.tmj");
+        assert(map != NULL);
+
+        pntr_image* expected = pntr_load_image("resources/tmw_desert_spacing.png");
+        assert(expected != NULL);
+
+        // The tileset image decodes to the same image as the PNG file.
+        pntr_image* tilesetImage = (pntr_image*)map->tilesets->image.ptr;
+        assert(tilesetImage != NULL);
+        assert(tilesetImage->width == 265);
+        assert(tilesetImage->height == 199);
+        PNTR_ASSERT_IMAGE_EQUALS(tilesetImage, expected);
+
+        // So does the image layer.
+        cute_tiled_layer_t* imageLayer = pntr_tiled_layer(map, "Image");
+        assert(imageLayer != NULL);
+        PNTR_ASSERT_IMAGE_EQUALS((pntr_image*)imageLayer->image.ptr, expected);
+
+        // The tiles are cut out of it using the tileset's margin and spacing.
+        pntr_image* actual = pntr_gen_image_tiled(map, PNTR_WHITE);
+        assert(actual != NULL);
+        assert(actual->width == 64);
+        assert(actual->height == 64);
+
+        pntr_image* expectedMap = pntr_gen_image_color(64, 64, PNTR_BLANK);
+        pntr_draw_image_rec(expectedMap, expected, PNTR_CLITERAL(pntr_rectangle){1, 1, 32, 32}, 0, 0);
+        pntr_draw_image_rec(expectedMap, expected, PNTR_CLITERAL(pntr_rectangle){34, 1, 32, 32}, 32, 0);
+        pntr_draw_image_rec(expectedMap, expected, PNTR_CLITERAL(pntr_rectangle){1, 34, 32, 32}, 0, 32);
+        pntr_draw_image_rec(expectedMap, expected, PNTR_CLITERAL(pntr_rectangle){166, 100, 32, 32}, 32, 32);
+        PNTR_ASSERT_IMAGE_EQUALS(actual, expectedMap);
+
+        pntr_unload_image(expectedMap);
+        pntr_unload_image(actual);
+        pntr_unload_image(expected);
+        pntr_unload_tiled(map);
+    }
+
     // assertsys
     #ifdef PNTR_ASSETSYS_IMPLEMENTATION
     {

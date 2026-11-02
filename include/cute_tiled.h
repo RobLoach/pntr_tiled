@@ -1369,7 +1369,9 @@ struct cute_tiled_page_t
 	void* data;
 };
 
+#ifndef CUTE_TILED_INTERNAL_BUFFER_MAX
 #define CUTE_TILED_INTERNAL_BUFFER_MAX 1024
+#endif
 
 struct cute_tiled_map_internal_t
 {
