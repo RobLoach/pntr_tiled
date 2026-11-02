@@ -304,6 +304,10 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled_from_assetsys(assetsys_t* sys, 
 #define CUTE_TILED_FREE(mem, ctx) pntr_unload_memory(mem)
 #define CUTE_TILED_MEMCPY PNTR_MEMCPY
 #define CUTE_TILED_MEMSET PNTR_MEMSET
+#ifndef CUTE_TILED_INTERNAL_BUFFER_MAX
+    // Large enough for base64 embedded images.
+    #define CUTE_TILED_INTERNAL_BUFFER_MAX (1024 * 256)
+#endif
 #define CUTE_TILED_SEEK_SET 0
 #define CUTE_TILED_SEEK_END 0
 #define CUTE_TILED_FILE void
@@ -558,7 +562,94 @@ PNTR_TILED_API cute_tiled_map_t* pntr_load_tiled(const char* fileName) {
 }
 
 /**
+ * Checks whether the given string starts with the given prefix.
+ */
+static bool _pntr_tiled_starts_with(const char* text, const char* prefix) {
+    while (*prefix != '\0') {
+        if (*text++ != *prefix++) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * Decodes a single base64 character, or returns -1 if it is not part of the base64 alphabet.
+ */
+static int _pntr_tiled_base64_value(char c) {
+    if (c >= 'A' && c <= 'Z') return c - 'A';
+    if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+    if (c >= '0' && c <= '9') return c - '0' + 52;
+    if (c == '+' || c == '-') return 62;
+    if (c == '/' || c == '_') return 63;
+    return -1;
+}
+
+/**
+ * Loads an image from a base64 data URI, like "data:image/png;base64,iVBORw0...".
+ *
+ * @param dataUri The data URI to load the image from.
+ *
+ * @return The loaded image, or NULL on failure.
+ */
+static pntr_image* _pntr_tiled_load_image_from_data_uri(const char* dataUri) {
+    // Find the start of the base64 data, which follows ";base64,".
+    const char* mimeType = dataUri + 5;
+    const char* data = mimeType;
+    while (*data != '\0' && *data != ',') {
+        data++;
+    }
+    if (*data != ',' || data - mimeType < 7 || !_pntr_tiled_starts_with(data - 7, ";base64,")) {
+        return NULL;
+    }
+    data++;
+
+    // Figure out the image type from the mime type, falling back to detecting it from the data.
+    pntr_image_type type = PNTR_IMAGE_TYPE_UNKNOWN;
+    if (_pntr_tiled_starts_with(mimeType, "image/png;")) {
+        type = PNTR_IMAGE_TYPE_PNG;
+    }
+    else if (_pntr_tiled_starts_with(mimeType, "image/jpeg;") || _pntr_tiled_starts_with(mimeType, "image/jpg;")) {
+        type = PNTR_IMAGE_TYPE_JPG;
+    }
+    else if (_pntr_tiled_starts_with(mimeType, "image/bmp;")) {
+        type = PNTR_IMAGE_TYPE_BMP;
+    }
+
+    // Every 4 base64 characters decode into at most 3 bytes.
+    size_t dataLength = PNTR_STRLEN(data);
+    unsigned char* decoded = (unsigned char*)pntr_load_memory(dataLength / 4 * 3 + 3);
+    if (decoded == NULL) {
+        return NULL;
+    }
+
+    // Decode the base64, skipping over any padding or whitespace.
+    unsigned int decodedSize = 0;
+    unsigned int buffer = 0;
+    int bits = 0;
+    for (size_t i = 0; i < dataLength; i++) {
+        int value = _pntr_tiled_base64_value(data[i]);
+        if (value < 0) {
+            continue;
+        }
+        buffer = (buffer << 6) | (unsigned int)value;
+        bits += 6;
+        if (bits >= 8) {
+            bits -= 8;
+            decoded[decodedSize++] = (unsigned char)((buffer >> bits) & 0xFF);
+        }
+    }
+
+    pntr_image* output = pntr_load_image_from_memory(type, decoded, decodedSize);
+    pntr_unload_memory(decoded);
+    return output;
+}
+
+/**
  * Replaces the "image" with pntr_image.
+ *
+ * The image may either be a path relative to the map, or a base64 data URI, like
+ * "data:image/png;base64,iVBORw0...", as exported by https://github.com/RobLoach/TiledExportExtensions
  *
  * @param image The string image to replace.
  * @param baseDir The base directory where the map file was loaded.
@@ -568,7 +659,15 @@ static void _pntr_load_tiled_string_texture(cute_tiled_string_t* image, const ch
         return;
     }
 
-    // TODO: Allow loading images from a base64 embedded image: https://github.com/RobLoach/TiledExportExtensions
+    // Load embedded base64 image data.
+    if (_pntr_tiled_starts_with(image->ptr, "data:")) {
+        image->ptr = (const char*)_pntr_tiled_load_image_from_data_uri(image->ptr);
+        if (image->ptr == NULL) {
+            PNTR_TILED_LOG("pntr_tiled: Failed to load embedded image data\n");
+        }
+        return;
+    }
+
     // Concatenate the baseDir with the image path.
     char fullPath[PNTR_PATH_MAX];
     fullPath[0] = '\0';
