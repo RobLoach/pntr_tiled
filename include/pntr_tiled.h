@@ -81,6 +81,8 @@ PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map,
  *
  * @details Hidden layers, fully transparent layers and layers with an unknown type are
  * skipped. A group layer draws its child layers, offset by the group's own offset.
+ * Each layer's parallax factor, multiplied by those of its parent groups, scales how far
+ * posX/posY move it, so a factor of 1 scrolls with the map and 0 stays fixed.
  *
  * @param dst The destination of where to draw the layers.
  * @param map The map that the layer belongs to.
@@ -1149,7 +1151,25 @@ PNTR_TILED_API void pntr_draw_tiled_layer_objectlayer(pntr_image* dst, cute_tile
     pntr_unload_memory(order);
 }
 
-PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
+/**
+ * Draw the given layer, and every layer that follows it, applying Tiled's parallax factors.
+ *
+ * Tiled shifts a layer by the camera position times (1 - factor), where the factor is the
+ * product of the layer's own factor and those of its parent groups. Here posX/posY act as
+ * the camera's scroll offset, so a layer lands at its offsets plus posX/posY scaled by its
+ * factor. With every factor at 1, this is just the layer's offset plus posX/posY.
+ *
+ * @param originX The accumulated offset of the parent group layers, which is not scaled.
+ * @param originY The accumulated offset of the parent group layers, which is not scaled.
+ * @param posX The camera scroll offset along the X coordinate.
+ * @param posY The camera scroll offset along the Y coordinate.
+ * @param parallaxX The combined X parallax factor of the parent group layers.
+ * @param parallaxY The combined Y parallax factor of the parent group layers.
+ *
+ * @internal
+ * @private
+ */
+static void _pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int originX, int originY, int posX, int posY, float parallaxX, float parallaxY, pntr_color tint) {
     if (dst == NULL || map == NULL || layer == NULL || tint.rgba.a == 0) {
         return;
     }
@@ -1162,25 +1182,35 @@ PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map
                 pntr_color_set_a(&tintWithOpacity, (unsigned char)((float)pntr_color_a(tintWithOpacity) * layer->opacity));
             }
 
+            // Apply the layer's offset and parallax
+            float factorX = parallaxX * layer->parallaxx;
+            float factorY = parallaxY * layer->parallaxy;
+            int x = originX + layer->offsetx + (int)((float)posX * factorX);
+            int y = originY + layer->offsety + (int)((float)posY * factorY);
+
             // Draw the layer
             switch (layer->type.ptr[0]) {
                 case 't': // "tilelayer"
-                    pntr_draw_tiled_layer_tilelayer(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
+                    pntr_draw_tiled_layer_tilelayer(dst, map, layer, x, y, tintWithOpacity);
                 break;
                 case 'g': // "group"
-                    pntr_draw_tiled_layer(dst, map, layer->layers, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
+                    _pntr_draw_tiled_layer(dst, map, layer->layers, originX + layer->offsetx, originY + layer->offsety, posX, posY, factorX, factorY, tintWithOpacity);
                 break;
                 case 'o': // "objectgroup"
-                    pntr_draw_tiled_layer_objectlayer(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
+                    pntr_draw_tiled_layer_objectlayer(dst, map, layer, x, y, tintWithOpacity);
                 break;
                 case 'i': // "imagelayer"
-                    pntr_draw_tiled_layer_imagelayer(dst, map, layer, layer->offsetx + posX, layer->offsety + posY, tintWithOpacity);
+                    pntr_draw_tiled_layer_imagelayer(dst, map, layer, x, y, tintWithOpacity);
                 break;
             }
         }
 
         layer = layer->next;
     }
+}
+
+PNTR_TILED_API void pntr_draw_tiled_layer(pntr_image* dst, cute_tiled_map_t* map, cute_tiled_layer_t* layer, int posX, int posY, pntr_color tint) {
+    _pntr_draw_tiled_layer(dst, map, layer, 0, 0, posX, posY, 1.0f, 1.0f, tint);
 }
 
 /**
@@ -1270,7 +1300,8 @@ PNTR_TILED_API pntr_image* pntr_gen_image_tiled(cute_tiled_map_t* map, pntr_colo
         return NULL;
     }
 
-    pntr_draw_tiled(output, map, posX, posY, tint);
+    // The bounds shift is not a camera scroll, so parallax does not move the layers.
+    _pntr_draw_tiled_layer(output, map, map->layers, posX, posY, 0, 0, 1.0f, 1.0f, tint);
     return output;
 }
 
@@ -1289,7 +1320,7 @@ PNTR_TILED_API pntr_image* pntr_gen_image_tiled_layer(cute_tiled_map_t* map, cut
         return NULL;
     }
 
-    pntr_draw_tiled_layer(output, map, layer, posX, posY, tint);
+    _pntr_draw_tiled_layer(output, map, layer, posX, posY, 0, 0, 1.0f, 1.0f, tint);
     return output;
 }
 

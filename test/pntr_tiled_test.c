@@ -242,6 +242,42 @@ int main() {
             pntr_unload_image(layerOnly);
         }
 
+        // Parallax: a layer's factor is multiplied by its parent groups' factors, and scales
+        // how far posX/posY move it. The fully turned "rotated" object sits at x 430.
+        {
+            cute_tiled_layer_t* group = pntr_tiled_layer(map, "Group");
+            cute_tiled_layer_t* objects = NULL;
+            for (cute_tiled_layer_t* child = group->layers; child; child = child->next) {
+                assert(child->parallaxx == 1.0f && child->parallaxy == 1.0f);
+                if (PNTR_STRCMP(child->name.ptr, "Objects") == 0) {
+                    objects = child;
+                }
+            }
+            assert(objects != NULL);
+            assert(group->parallaxx == 1.0f);
+
+            pntr_image* layerOnly = pntr_gen_image_color(map->width * map->tilewidth, map->height * map->tileheight, PNTR_BLANK);
+            int minX, minY, maxX, maxY;
+
+            // The group at 0.5 scrolls half as far: 430 - 100 * 0.5.
+            group->parallaxx = 0.5f;
+            pntr_draw_tiled_layer(layerOnly, map, group, -100, 0, PNTR_WHITE);
+            find_drawn_bounds(layerOnly, 370, 90, 30, 60, &minX, &minY, &maxX, &maxY);
+            assert(minX == 380);
+            assert(minY == 100);
+
+            // A child at 0.5 inside it gives 0.25: 430 - 100 * 0.25.
+            pntr_clear_background(layerOnly, PNTR_BLANK);
+            objects->parallaxx = 0.5f;
+            pntr_draw_tiled_layer(layerOnly, map, group, -100, 0, PNTR_WHITE);
+            find_drawn_bounds(layerOnly, 395, 90, 40, 60, &minX, &minY, &maxX, &maxY);
+            assert(minX == 405);
+
+            group->parallaxx = 1.0f;
+            objects->parallaxx = 1.0f;
+            pntr_unload_image(layerOnly);
+        }
+
         // Tiled's draworder decides how a layer stacks its objects. Both of these layers
         // hold the same two objects -- a tile listed first and sitting lower down, and a
         // rectangle listed second and sitting higher up -- so the only difference between
