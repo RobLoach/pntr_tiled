@@ -370,6 +370,35 @@ int main() {
             assert(pntr_tiled_tile_image(NULL, 1) == NULL);
         }
 
+        // pntr_draw_tiled_tile() applies the tint to flipped tiles too.
+        {
+            pntr_image* tile = pntr_tiled_tile_image(map, 1);
+            assert(tile != NULL);
+            int flippedGid = 1 | CUTE_TILED_FLIPPED_HORIZONTALLY_FLAG;
+            pntr_color tint = pntr_new_color(255, 0, 0, 255);
+
+            pntr_image* plain = pntr_gen_image_color(tile->width, tile->height, PNTR_BLANK);
+            pntr_image* tinted = pntr_gen_image_color(tile->width, tile->height, PNTR_BLANK);
+            pntr_draw_tiled_tile(plain, map, flippedGid, 0, 0, PNTR_WHITE);
+            pntr_draw_tiled_tile(tinted, map, flippedGid, 0, 0, tint);
+
+            // The white tint draws the tile mirrored, unchanged.
+            pntr_color source = pntr_image_get_color(tile, 0, 0);
+            pntr_color mirrored = pntr_image_get_color(plain, tile->width - 1, 0);
+            assert(source.value == mirrored.value);
+
+            // Every pixel of the tinted draw is the plain flipped pixel, tinted.
+            for (int y = 0; y < tile->height; y++) {
+                for (int x = 0; x < tile->width; x++) {
+                    pntr_color expected = pntr_color_tint(pntr_image_get_color(plain, x, y), tint);
+                    assert(pntr_image_get_color(tinted, x, y).value == expected.value);
+                }
+            }
+
+            pntr_unload_image(tinted);
+            pntr_unload_image(plain);
+        }
+
         pntr_unload_tiled(map);
     }
 

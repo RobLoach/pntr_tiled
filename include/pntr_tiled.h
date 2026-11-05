@@ -813,12 +813,12 @@ PNTR_TILED_API void pntr_draw_tiled_tile(pntr_image* dst, cute_tiled_map_t* map,
 
     // See if we are to flip the tile in anyway.
     if (tileID != gid) {
-        // TODO: pntr_draw_tiled_tile: Add flipped tile with tint with pntr_draw_image_flipped_tint
-        pntr_draw_image_flipped(dst, tile,
+        pntr_draw_image_flipped_tint(dst, tile,
             posX, posY,
             !!(gid & CUTE_TILED_FLIPPED_HORIZONTALLY_FLAG),
             !!(gid & CUTE_TILED_FLIPPED_VERTICALLY_FLAG),
-            !!(gid & CUTE_TILED_FLIPPED_DIAGONALLY_FLAG)
+            !!(gid & CUTE_TILED_FLIPPED_DIAGONALLY_FLAG),
+            tint
         );
     }
     else {
